@@ -3,43 +3,387 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Containment</title>
+    <title>Containment — Combat Protocol</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="left-sidebar">
-        <h2>Node Map</h2>
-        <div class="node-map"></div>
-        <h3>Run Stats</h3>
-        <div class="run-stats"></div>
-    </div>
-    <div class="main-content">
-        <header>
-            <h1>Containment</h1>
-            <button id="end-turn">END TURN</button>
-        </header>
-        <div class="reward-progress">
-            <div class="progress-bar"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TOP BAR — 5-column grid
+═══════════════════════════════════════════════════════════ -->
+<header class="top-bar">
+
+    <!-- Col 1: OSP Logo -->
+    <div class="top-col top-logo">
+        <div class="osp-logo">
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                <polygon points="18,2 34,11 34,25 18,34 2,25 2,11" stroke="#00ffff" stroke-width="1.5" fill="none"/>
+                <polygon points="18,8 28,13 28,23 18,28 8,23 8,13" stroke="#00ffff" stroke-width="1" fill="rgba(0,255,255,0.05)"/>
+                <text x="18" y="22" text-anchor="middle" fill="#00ffff" font-size="9" font-family="monospace" font-weight="bold">OSP</text>
+            </svg>
         </div>
-        <div class="hexagon-frames">
-            <div class="geometric-core">
-                <!-- Geometric core SVG goes here -->
+        <span class="osp-label">OPEN<br>SYSTEM<br>PROTOCOL</span>
+    </div>
+
+    <!-- Col 2: Player Entity Block -->
+    <div class="top-col entity-block player-entity">
+        <div class="entity-inner">
+            <div class="hex-portrait player-portrait">
+                <svg width="56" height="64" viewBox="0 0 56 64">
+                    <polygon points="28,2 54,16 54,48 28,62 2,48 2,16" stroke="#00ffff" stroke-width="1.5" fill="rgba(0,20,40,0.9)"/>
+                    <text x="28" y="36" text-anchor="middle" fill="#00ffff" font-size="20">⬡</text>
+                </svg>
+                <span class="level-badge">LV.7</span>
             </div>
-            <div class="card-slots">
-                <span class="card-slot">Card Slot 1</span>
-                <span class="card-slot">Card Slot 2</span>
-                <span class="card-slot">Card Slot 3</span>
-                <span class="card-slot">Card Slot 4</span>
-                <span class="card-slot">Card Slot 5</span>
+            <div class="entity-stats">
+                <div class="entity-name">AXIOM</div>
+                <div class="stat-bar-row">
+                    <span class="stat-icon hp-icon">♥</span>
+                    <div class="stat-bar"><div class="stat-fill hp-fill" style="width:72%"></div></div>
+                    <span class="stat-val" id="player-hp">54/75</span>
+                </div>
+                <div class="stat-bar-row">
+                    <span class="stat-icon armor-icon">⬡</span>
+                    <div class="stat-bar"><div class="stat-fill armor-fill" style="width:60%"></div></div>
+                    <span class="stat-val" id="player-armor">12</span>
+                </div>
+                <div class="stat-bar-row">
+                    <span class="stat-icon shield-icon">◈</span>
+                    <div class="stat-bar"><div class="stat-fill shield-fill" style="width:33%"></div></div>
+                    <span class="stat-val" id="player-shield">8</span>
+                </div>
             </div>
         </div>
     </div>
-    <div class="right-sidebar">
-        <h2>Mission Brief</h2>
-        <div class="mission-brief"></div>
-        <h3>Stacks</h3>
-        <div class="action-report"></div>
+
+    <!-- Col 3: CENTER combat title -->
+    <div class="top-col top-center">
+        <div class="your-move-title">YOUR MOVE</div>
+        <div class="energy-pips-row">
+            <div class="energy-pip active" title="Energy 1"></div>
+            <div class="energy-pip active" title="Energy 2"></div>
+            <div class="energy-pip active" title="Energy 3"></div>
+        </div>
+        <div class="energy-label"><span id="energy-current">3</span>/<span id="energy-max">3</span> ENERGY</div>
+        <div class="turn-counter">TURN <span id="turn-number">7</span></div>
     </div>
-    <script src="script.js"></script>
+
+    <!-- Col 4: Enemy Entity Block -->
+    <div class="top-col entity-block enemy-entity">
+        <div class="entity-inner enemy-inner">
+            <div class="entity-stats enemy-stats">
+                <div class="entity-name enemy-name">CORRUPTOR</div>
+                <div class="stat-bar-row">
+                    <span class="stat-val" id="enemy-hp">38/80</span>
+                    <div class="stat-bar"><div class="stat-fill hp-fill" style="width:48%"></div></div>
+                    <span class="stat-icon hp-icon">♥</span>
+                </div>
+                <div class="stat-bar-row">
+                    <span class="stat-val" id="enemy-armor">6</span>
+                    <div class="stat-bar"><div class="stat-fill armor-fill" style="width:30%"></div></div>
+                    <span class="stat-icon armor-icon">⬡</span>
+                </div>
+                <div class="stat-bar-row">
+                    <span class="stat-val" id="enemy-shield">0</span>
+                    <div class="stat-bar"><div class="stat-fill shield-fill" style="width:0%"></div></div>
+                    <span class="stat-icon shield-icon">◈</span>
+                </div>
+            </div>
+            <div class="hex-portrait enemy-portrait">
+                <svg width="56" height="64" viewBox="0 0 56 64">
+                    <polygon points="28,2 54,16 54,48 28,62 2,48 2,16" stroke="#ff3366" stroke-width="1.5" fill="rgba(40,0,10,0.9)"/>
+                    <text x="28" y="36" text-anchor="middle" fill="#ff3366" font-size="20">⬡</text>
+                </svg>
+                <span class="level-badge enemy-level">LV.9</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Col 5: Node Type Chip -->
+    <div class="top-col top-node-chip">
+        <div class="node-type-chip">
+            <div class="node-chip-icon">⬡</div>
+            <div class="node-chip-label">ELITE<br>NODE</div>
+            <div class="node-chip-sub">SECTOR 4</div>
+        </div>
+    </div>
+
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN BODY — Left Sidebar | Center | Right Sidebar
+═══════════════════════════════════════════════════════════ -->
+<div class="body-layout">
+
+    <!-- ─── LEFT SIDEBAR (175px) ─── -->
+    <aside class="left-sidebar">
+
+        <!-- NODE MAP -->
+        <div class="panel node-map-panel">
+            <div class="panel-title">NODE MAP</div>
+            <div class="node-map-grid" id="node-map"></div>
+        </div>
+
+        <!-- RUN STATS -->
+        <div class="panel run-stats-panel">
+            <div class="panel-title">RUN STATS</div>
+            <div class="run-stat-row">
+                <span class="rs-label">DEPTH</span>
+                <span class="rs-val cyan">4-2</span>
+            </div>
+            <div class="run-stat-row">
+                <span class="rs-label">COURAGE</span>
+                <span class="rs-val green">72</span>
+            </div>
+            <div class="run-stat-row">
+                <span class="rs-label">IR RATING</span>
+                <span class="rs-val yellow">B+</span>
+            </div>
+            <div class="run-stat-row">
+                <span class="rs-label">RUN TIME</span>
+                <span class="rs-val">14:38</span>
+            </div>
+        </div>
+
+        <!-- RELICS -->
+        <div class="panel relics-panel">
+            <div class="panel-title">RELICS</div>
+            <div class="relics-row">
+                <div class="relic-slot active" title="Quantum Cache: +1 Energy on turn start">
+                    <div class="relic-icon">⚡</div>
+                    <div class="relic-name">Q.CACHE</div>
+                </div>
+                <div class="relic-slot active" title="Neural Dampener: Reduce enemy intent by 2">
+                    <div class="relic-icon">🧠</div>
+                    <div class="relic-name">N.DAMP</div>
+                </div>
+                <div class="relic-slot" title="Empty relic slot">
+                    <div class="relic-icon">—</div>
+                    <div class="relic-name">EMPTY</div>
+                </div>
+            </div>
+        </div>
+
+    </aside>
+
+    <!-- ─── CENTER AREA ─── -->
+    <main class="center-area">
+
+        <!-- CORES ROW -->
+        <div class="cores-row">
+
+            <!-- Player Core -->
+            <div class="core-block player-core">
+                <div class="core-label">P.CORE</div>
+                <svg class="core-hex" width="80" height="92" viewBox="0 0 80 92">
+                    <defs>
+                        <filter id="glow-blue">
+                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                        </filter>
+                    </defs>
+                    <polygon points="40,4 76,22 76,70 40,88 4,70 4,22" stroke="#00aaff" stroke-width="2" fill="rgba(0,40,80,0.8)" filter="url(#glow-blue)"/>
+                    <polygon points="40,16 64,28 64,64 40,76 16,64 16,28" stroke="#00ddff" stroke-width="1" fill="rgba(0,80,160,0.3)"/>
+                    <circle cx="40" cy="46" r="14" stroke="#00ffff" stroke-width="1.5" fill="none"/>
+                    <line x1="40" y1="32" x2="40" y2="60" stroke="#00ffff" stroke-width="1"/>
+                    <line x1="26" y1="46" x2="54" y2="46" stroke="#00ffff" stroke-width="1"/>
+                </svg>
+                <div class="core-sublabel">ONLINE</div>
+            </div>
+
+            <!-- Combat Logic Panel -->
+            <div class="combat-logic-panel">
+                <div class="panel-title">COMBAT LOGIC</div>
+                <div class="combat-flow">
+                    <div class="flow-node p-card" id="flow-pcard">P.CARD</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-node p-core" id="flow-pcore">P.CORE</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-node e-card" id="flow-ecard">E.CARD</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-node e-core" id="flow-ecore">E.CORE</div>
+                </div>
+
+                <div class="chain-bonus" id="chain-bonus">
+                    <span class="chain-mult">×2</span>
+                    <span class="chain-text">+25% DAMAGE</span>
+                </div>
+
+                <!-- Intent Box -->
+                <div class="intent-box" id="intent-box">
+                    <div class="intent-label">ENEMY INTENT</div>
+                    <div class="intent-content">
+                        <span class="intent-icon">⚔</span>
+                        <span class="intent-action" id="intent-action">ATTACK ×18</span>
+                    </div>
+                </div>
+
+                <!-- Reward Progress -->
+                <div class="reward-section">
+                    <div class="reward-label">REWARD PROGRESS</div>
+                    <div class="reward-bar-wrap">
+                        <div class="reward-bar-fill" id="reward-fill" style="width:56%"></div>
+                        <span class="reward-pct" id="reward-pct">56% SYNCED</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enemy Core -->
+            <div class="core-block enemy-core">
+                <div class="core-label">E.CORE</div>
+                <svg class="core-hex" width="80" height="92" viewBox="0 0 80 92">
+                    <defs>
+                        <filter id="glow-red">
+                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                        </filter>
+                    </defs>
+                    <polygon points="40,4 76,22 76,70 40,88 4,70 4,22" stroke="#ff3366" stroke-width="2" fill="rgba(80,0,20,0.8)" filter="url(#glow-red)"/>
+                    <polygon points="40,16 64,28 64,64 40,76 16,64 16,28" stroke="#ff6688" stroke-width="1" fill="rgba(160,0,40,0.3)"/>
+                    <circle cx="40" cy="46" r="14" stroke="#ff3366" stroke-width="1.5" fill="none"/>
+                    <line x1="40" y1="32" x2="40" y2="60" stroke="#ff3366" stroke-width="1"/>
+                    <line x1="26" y1="46" x2="54" y2="46" stroke="#ff3366" stroke-width="1"/>
+                </svg>
+                <div class="core-sublabel corrupted">CORRUPTED</div>
+            </div>
+
+        </div><!-- /cores-row -->
+
+        <!-- HAND AREA -->
+        <div class="hand-section">
+            <div class="hand-label">HAND</div>
+            <div class="hand-area" id="hand-area">
+                <!-- Cards rendered by JS -->
+            </div>
+            <div class="deck-info">
+                <span class="deck-count">DECK: <strong id="deck-count">9</strong></span>
+                <span class="discard-count">DISCARD: <strong id="discard-count">5</strong></span>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ─── RIGHT SIDEBAR (195px) ─── -->
+    <aside class="right-sidebar">
+
+        <!-- MISSION BRIEF -->
+        <div class="panel mission-brief-panel">
+            <div class="panel-title">MISSION BRIEF</div>
+            <div class="mission-text">
+                Sector 4 containment breach detected. Corruptor-class entity has infiltrated the neural grid. Engage and neutralize before system cascade. Uplink to OSP remains active — do not break connection.
+            </div>
+            <div class="mission-objective">
+                <span class="obj-icon">▶</span>
+                <span class="obj-text">Defeat Corruptor</span>
+            </div>
+        </div>
+
+        <!-- STATUS STACKS -->
+        <div class="panel status-panel">
+            <div class="panel-title">STATUS STACKS</div>
+            <div class="status-section-label player-label">PLAYER</div>
+            <div class="status-stacks" id="player-status">
+                <div class="status-chip cyan" title="Fortified: +3 Armor per turn">
+                    <span class="chip-icon">⬡</span>
+                    <span class="chip-name">FORTIFY</span>
+                    <span class="chip-count">×3</span>
+                </div>
+                <div class="status-chip green" title="Regen: Heal 4 HP per turn">
+                    <span class="chip-icon">+</span>
+                    <span class="chip-name">REGEN</span>
+                    <span class="chip-count">×2</span>
+                </div>
+            </div>
+            <div class="status-section-label enemy-label">ENEMY</div>
+            <div class="status-stacks" id="enemy-status">
+                <div class="status-chip red" title="Vulnerable: Take 25% more damage">
+                    <span class="chip-icon">↓</span>
+                    <span class="chip-name">VULNER</span>
+                    <span class="chip-count">×2</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACTION REPORT -->
+        <div class="panel action-report-panel">
+            <div class="panel-title">ACTION REPORT</div>
+            <!-- Initial log entries shown before JS appends live entries -->
+            <div class="combat-log" id="combat-log">
+                <div class="log-entry">Turn 7 begins — 3 energy restored.</div>
+                <div class="log-entry player-action">You played Neural Strike → 12 DMG to Corruptor.</div>
+                <div class="log-entry player-action">Firewall active — +8 Armor gained.</div>
+                <div class="log-entry enemy-action">Corruptor charges attack (intent: 18).</div>
+            </div>
+        </div>
+
+    </aside>
+
+</div><!-- /body-layout -->
+
+<!-- ═══════════════════════════════════════════════════════════
+     BOTTOM BAR
+═══════════════════════════════════════════════════════════ -->
+<div class="bottom-bar">
+
+    <!-- Filter Buttons -->
+    <div class="filter-group">
+        <span class="filter-label">FILTER:</span>
+        <button class="filter-btn all active" onclick="Game.filterHand('all')">ALL</button>
+        <button class="filter-btn attack" onclick="Game.filterHand('attack')">ATTACK</button>
+        <button class="filter-btn skill" onclick="Game.filterHand('skill')">SKILL</button>
+        <button class="filter-btn economy" onclick="Game.filterHand('economy')">ECONOMY</button>
+    </div>
+
+    <!-- VALOR Pips -->
+    <div class="valor-group">
+        <span class="valor-label">VALOR</span>
+        <div class="valor-pips">
+            <div class="valor-pip filled"></div>
+            <div class="valor-pip filled"></div>
+            <div class="valor-pip filled"></div>
+            <div class="valor-pip"></div>
+            <div class="valor-pip"></div>
+        </div>
+    </div>
+
+    <!-- Infusion Slots -->
+    <div class="infusion-group">
+        <span class="infusion-label">INFUSION</span>
+        <div class="infusion-slots">
+            <div class="infusion-slot active" title="Slot 1: Cyber Charge active">⚡</div>
+            <div class="infusion-slot active" title="Slot 2: Data Surge active">◈</div>
+            <div class="infusion-slot" title="Slot 3: Empty">—</div>
+        </div>
+    </div>
+
+    <!-- END TURN Button -->
+    <button class="end-turn-btn" id="end-turn-btn" onclick="Game.endTurn()">
+        <span class="end-turn-text">END TURN</span>
+        <span class="end-turn-hint">HOLD SPACE</span>
+    </button>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════════════════════ -->
+<footer class="site-footer">
+    <div class="footer-logo">
+        <svg width="20" height="20" viewBox="0 0 36 36" fill="none">
+            <polygon points="18,2 34,11 34,25 18,34 2,25 2,11" stroke="#00ffff" stroke-width="1.5" fill="none"/>
+        </svg>
+        OSP
+    </div>
+    <div class="footer-tagline">CONTAINMENT PROTOCOL — ACTIVE</div>
+    <div class="footer-version">v2.7.1-ALPHA</div>
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════════
+     OVERLAY — Card Play / Damage Popups
+═══════════════════════════════════════════════════════════ -->
+<div class="damage-overlay" id="damage-overlay"></div>
+<div class="card-play-overlay" id="card-play-overlay"></div>
+
+<script src="script.js"></script>
 </body>
 </html>
