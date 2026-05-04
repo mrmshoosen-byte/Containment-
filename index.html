@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CONTAINMENT — TCG FACEOFF</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   CSS CUSTOM PROPERTIES
+   ============================================================ */
+:root {
+  --bg:        #0a0a0f;
+  --surface:   #12121e;
+  --surface2:  #1a1a2e;
+  --border:    rgba(255,255,255,0.08);
+  --text:      #d8d8f0;
+  --dim:       #7070a0;
+
+  --common:    #00ff88;
+  --rare:      #0099ff;
+  --exotic:    #ff4400;
+  --legendary: #cc00ff;
+
+  --hp:        #ff3355;
+  --shield:    #44aaff;
+  --energy:    #ffdd00;
+  --accent:    #00ffcc;
+
+  --glow-c: 0 0 8px var(--common),  0 0 20px var(--common);
+  --glow-r: 0 0 8px var(--rare),    0 0 20px var(--rare);
+  --glow-e: 0 0 8px var(--exotic),  0 0 20px var(--exotic);
+  --glow-l: 0 0 8px var(--legendary), 0 0 24px var(--legendary);
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ============================================================
+   SCREENS
+   ============================================================ */
+.screen {
+  position: fixed; inset: 0;
+  display: none; flex-direction: column;
+  overflow: hidden;
+}
+.screen.active { display: flex; }
+
+/* ============================================================
+   BACKGROUND GRID (decorative)
+   ============================================================ */
+.bg-grid {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgba(0,255,204,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,204,0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* scan-line effect */
+.scan-line {
+  position: fixed; left: 0; width: 100%; height: 2px;
+  background: rgba(0,255,204,0.3);
+  animation: scan 10s linear infinite;
+  pointer-events: none; z-index: 9999;
+}
+@keyframes scan { 0%{top:-1%} 100%{top:101%} }
+
+/* ============================================================
+   TYPOGRAPHY UTILITIES
+   ============================================================ */
+.font-orb { font-family: 'Orbitron', monospace; }
+.font-mono { font-family: 'Share Tech Mono', monospace; }
+.text-accent  { color: var(--accent); }
+.text-dim     { color: var(--dim); }
+.text-energy  { color: var(--energy); }
+.text-hp      { color: var(--hp); }
+.text-legendary { color: var(--legendary); }
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  padding: 0.65rem 1.6rem;
+  border: 2px solid;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+  text-transform: uppercase;
+  position: relative; overflow: hidden;
+  color: inherit;
+  -webkit-user-select: none; user-select: none;
+}
+.btn::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.07) 50%, transparent 60%);
+  transform: translateX(-100%);
+  transition: transform 0.3s;
+}
+.btn:hover::after { transform: translateX(100%); }
+
+.btn-accent   { color: var(--accent);    border-color: var(--accent); }
+.btn-accent:hover   { background: rgba(0,255,204,0.12); box-shadow: 0 0 20px var(--accent); }
+
+.btn-legendary { color: var(--legendary); border-color: var(--legendary); }
+.btn-legendary:hover { background: rgba(204,0,255,0.12); box-shadow: 0 0 20px var(--legendary); }
+
+.btn-dim  { color: var(--dim); border-color: var(--dim); }
+.btn-dim:hover { background: rgba(255,255,255,0.05); }
+
+.btn-danger { color: var(--exotic); border-color: var(--exotic); }
+.btn-danger:hover { background: rgba(255,68,0,0.12); box-shadow: 0 0 20px var(--exotic); }
+
+.btn-end-turn {
+  font-family: 'Orbitron', monospace;
+  font-weight: 900;
+  font-size: clamp(0.75rem, 2vw, 1rem);
+  letter-spacing: 0.15em;
+  padding: 0.8rem 2rem;
+  background: linear-gradient(135deg, #9900cc, #6600aa);
+  border: 2px solid var(--legendary);
+  color: #fff;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: box-shadow 0.15s, transform 0.1s, opacity 0.2s;
+  box-shadow: 0 0 14px var(--legendary);
+  min-width: 130px;
+  -webkit-user-select: none; user-select: none;
+}
+.btn-end-turn:hover:not(:disabled) { box-shadow: 0 0 28px var(--legendary); transform: scale(1.04); }
+.btn-end-turn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+/* ============================================================
+   MENU SCREEN
+   ============================================================ */
+#screen-menu {
+  background: radial-gradient(ellipse at 50% 40%, #1a0030 0%, #0a0a0f 65%);
+  justify-content: center; align-items: center; gap: 1.8rem;
+  text-align: center; padding: 2rem;
+}
+
+.menu-logo {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(2.2rem, 9vw, 5.5rem);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #fff;
+  text-shadow: 0 0 20px var(--legendary), 0 0 50px var(--legendary);
+  animation: glitch-logo 6s infinite;
+  position: relative; z-index: 1;
+}
+@keyframes glitch-logo {
+  0%,92%,100% { text-shadow: 0 0 20px var(--legendary), 0 0 50px var(--legendary); transform: none; }
+  93%  { text-shadow: -4px 0 #ff00ff, 4px 0 #00ffff; transform: skewX(-6deg); }
+  94%  { text-shadow: 4px 0 #ff00ff, -4px 0 #00ffff; transform: skewX(6deg); }
+  95%  { text-shadow: 0 0 20px var(--legendary), 0 0 50px var(--legendary); transform: none; }
+}
+
+.menu-tagline {
+  font-size: clamp(0.65rem, 2vw, 0.9rem);
+  color: var(--dim);
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  position: relative; z-index: 1;
+}
+.menu-buttons { display: flex; flex-direction: column; gap: 0.9rem; align-items: center; width: 100%; max-width: 280px; z-index: 1; }
+.menu-buttons .btn { width: 100%; }
+
+.osp-brand {
+  font-family: 'Orbitron', monospace;
+  font-weight: 900;
+  font-size: 2rem;
+  background: linear-gradient(135deg, var(--legendary), var(--rare));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  z-index: 1;
+}
+
+/* ============================================================
+   DECK BUILDER SCREEN
+   ============================================================ */
+#screen-deckbuild {
+  background: var(--bg);
+  overflow: hidden;
+  display: none; flex-direction: column;
+}
+#screen-deckbuild.active { display: flex; }
+
+.deckbuild-header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.deckbuild-title { font-family: 'Orbitron', monospace; font-size: clamp(0.9rem,3vw,1.3rem); color: var(--accent); }
+
+.all-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+  gap: 0.75rem;
+  padding: 1rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ============================================================
+   MAP SCREEN
+   ============================================================ */
+#screen-map {
+  background: radial-gradient(ellipse at 50% 50%, #001833 0%, #0a0a0f 70%);
+  justify-content: center; align-items: center; gap: 1.5rem;
+  padding: 2rem; text-align: center;
+}
+.map-title { font-family: 'Orbitron', monospace; font-size: clamp(1rem,4vw,1.6rem); color: var(--accent); letter-spacing: 0.2em; text-transform: uppercase; z-index:1; }
+.map-subtitle { font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: var(--dim); z-index:1; }
+
+.node-row {
+  display: flex; align-items: center; gap: 0.6rem;
+  flex-wrap: wrap; justify-content: center;
+  max-width: min(92vw, 680px);
+  z-index: 1;
+}
+.node {
+  width: clamp(72px,13vw,90px);
+  height: clamp(72px,13vw,90px);
+  border: 2px solid;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  background: var(--surface);
+  font-family: 'Orbitron', monospace;
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  transition: transform 0.15s, box-shadow 0.15s;
+  -webkit-user-select: none; user-select: none;
+}
+.node-icon { font-size: 1.4rem; }
+.node.normal  { border-color: var(--accent); }
+.node.elite   { border-color: var(--exotic); }
+.node.boss    { border-color: var(--legendary); }
+.node.done    { opacity: 0.35; cursor: default; pointer-events: none; }
+.node.current { animation: node-pulse 2s infinite; }
+.node.normal:hover:not(.done)  { transform: scale(1.08); box-shadow: 0 0 18px var(--accent); }
+.node.elite:hover:not(.done)   { transform: scale(1.08); box-shadow: 0 0 18px var(--exotic); }
+.node.boss:hover:not(.done)    { transform: scale(1.08); box-shadow: 0 0 18px var(--legendary); }
+@keyframes node-pulse {
+  0%,100% { box-shadow: 0 0 6px var(--accent); }
+  50%      { box-shadow: 0 0 20px var(--accent), 0 0 40px var(--accent); }
+}
+.node-connector { width: 30px; height: 2px; background: rgba(255,255,255,0.15); flex-shrink: 0; }
+
+/* ============================================================
+   COMBAT SCREEN LAYOUT
+   ============================================================ */
+#screen-combat { background: var(--bg); }
+
+/* Top bar */
+.cbt-topbar {
+  display: flex; align-items: center;
+  padding: 0.4rem 0.8rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0; gap: 0.75rem;
+}
+.cbt-osp { font-family: 'Orbitron', monospace; font-weight: 900; font-size: 0.85rem; color: var(--legendary); text-shadow: 0 0 8px var(--legendary); }
+.cbt-center-info { flex: 1; display: flex; gap: 1rem; justify-content: center; align-items: center; flex-wrap: wrap; }
+.cbt-info-chip {
+  font-family: 'Orbitron', monospace; font-size: 0.62rem;
+  color: var(--dim); letter-spacing: 0.08em;
+}
+.cbt-info-chip span { color: var(--accent); margin-left: 0.2rem; }
+.cbt-info-chip.boss-chip span { color: var(--legendary); }
+.cbt-info-chip.elite-chip span { color: var(--exotic); }
+
+/* Energy row */
+.energy-row { display: flex; align-items: center; gap: 0.4rem; }
+.energy-label { font-family: 'Orbitron', monospace; font-size: 0.6rem; color: var(--dim); }
+.energy-pips  { display: flex; gap: 3px; }
+.ep {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--energy); background: transparent;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.ep.on { background: var(--energy); box-shadow: 0 0 6px var(--energy); animation: ep-pulse 1.8s infinite; }
+@keyframes ep-pulse { 0%,100%{box-shadow:0 0 6px var(--energy)} 50%{box-shadow:0 0 14px var(--energy),0 0 24px var(--energy)} }
+.energy-text { font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: var(--energy); }
+
+/* Main 3-column grid */
+.cbt-main {
+  display: grid;
+  grid-template-columns: 190px 1fr 210px;
+  flex: 1; min-height: 0;
+  gap: 0.4rem;
+  padding: 0.4rem;
+}
+
+/* Sidebars */
+.cbt-sidebar { display: flex; flex-direction: column; gap: 0.4rem; overflow-y: auto; }
+
+/* Panel */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 0.5rem;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.panel-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.58rem; letter-spacing: 0.18em;
+  color: var(--accent); text-transform: uppercase;
+  border-bottom: 1px solid rgba(0,255,204,0.2);
+  padding-bottom: 0.3rem; margin-bottom: 0.4rem;
+}
+
+/* Relics grid */
+.relics-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 3px; }
+.relic-slot {
+  aspect-ratio:1; border: 1px solid rgba(255,255,255,0.12);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface2); font-size: 1.1rem; cursor: default;
+}
+.relic-slot.empty { font-size: 0.55rem; color: var(--dim); }
+
+/* Run stats */
+.stat-row { display: flex; justify-content: space-between; align-items: center; padding: 0.18rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.stat-lbl  { font-size: 0.6rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.06em; }
+.stat-val  { font-family: 'Share Tech Mono', monospace; font-size: 0.72rem; color: var(--accent); }
+
+/* Action report */
+.action-report { flex: 1; overflow-y: auto; font-size: 0.62rem; line-height: 1.65; }
+.log-line { padding: 0.12rem 0; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--dim); }
+.log-line.player  { color: var(--accent); }
+.log-line.enemy   { color: #ff7799; }
+.log-line.status  { color: #ffdd66; }
+.log-line.system  { color: var(--legendary); }
+
+/* ============================================================
+   COMBAT CENTER
+   ============================================================ */
+.cbt-center { display: flex; flex-direction: column; gap: 0.4rem; min-height: 0; }
+
+/* Portraits row */
+.portraits-row {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 0.75rem; padding: 0.4rem 0;
+  flex-shrink: 0;
+}
+
+.portrait-wrap { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; flex-shrink: 0; }
+
+.portrait-frame {
+  width: clamp(80px,12vw,120px);
+  height: clamp(80px,12vw,120px);
+  border: 2px solid;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+  font-size: clamp(2rem,4vw,3rem);
+}
+.portrait-frame.player-frame { border-color: var(--accent);  box-shadow: 0 0 12px var(--accent); }
+.portrait-frame.enemy-frame  { border-color: var(--hp);       box-shadow: 0 0 12px var(--hp); }
+
+.portrait-name {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(0.45rem, 1.2vw, 0.62rem);
+  text-align: center; text-transform: uppercase; letter-spacing: 0.06em;
+  max-width: 125px; word-break: break-word;
+}
+
+/* HP bar */
+.hp-wrap { width: clamp(80px,12vw,125px); }
+.hp-label-row { display: flex; justify-content: space-between; font-size: 0.58rem; color: var(--dim); }
+.bar-track { width:100%; height:7px; background:#222; border-radius:3px; overflow:hidden; margin-top:2px; }
+.bar-fill { height:100%; border-radius:3px; transition: width 0.3s; }
+.hp-fill    { background: linear-gradient(90deg, #cc1133, #ff4466); }
+.shield-fill { background: var(--shield); }
+.shield-track { width:100%; height:4px; background:#222; border-radius:2px; overflow:hidden; margin-top:2px; }
+
+/* Status badges */
+.status-row { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 3px; min-height: 14px; }
+.sbadge {
+  font-size: 0.55rem; padding: 1px 3px;
+  border-radius: 2px; border: 1px solid;
+  font-family: 'Share Tech Mono', monospace;
+  white-space: nowrap;
+}
+
+/* Enemy intent */
+.intent-box {
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  background: rgba(255,51,85,0.12);
+  border: 1px solid rgba(255,51,85,0.35);
+  border-radius: 2px;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+.intent-icon { font-size: 1rem; }
+
+/* VS divider */
+.vs-center {
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  flex: 1; justify-content: center;
+}
+.vs-label { font-family: 'Orbitron', monospace; font-size: 0.6rem; color: var(--dim); letter-spacing: 0.2em; }
+
+/* ============================================================
+   CARD SHOWCASE / HAND
+   ============================================================ */
+.hand-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 0.4rem;
+}
+.hand-label { font-family: 'Orbitron', monospace; font-size: 0.58rem; color: var(--dim); letter-spacing: 0.18em; text-transform: uppercase; }
+.pile-counts { display: flex; gap: 0.75rem; font-size: 0.65rem; color: var(--dim); font-family: 'Share Tech Mono', monospace; }
+
+.hand-area {
+  display: flex; gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  overflow-x: auto; overflow-y: visible;
+  flex: 1; min-height: clamp(140px,22vh,175px);
+  align-items: flex-end; justify-content: center;
+  padding-bottom: 0.6rem;
+}
+
+/* ============================================================
+   CARD COMPONENT
+   ============================================================ */
+.card {
+  position: relative;
+  width: clamp(85px,11vw,112px);
+  height: clamp(125px,16vw,158px);
+  border: 2px solid;
+  background: var(--surface2);
+  cursor: pointer;
+  display: flex; flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: transform 0.18s, box-shadow 0.18s;
+  -webkit-user-select: none; user-select: none;
+}
+.card:hover:not(.unplayable) { transform: translateY(-10px) scale(1.06); z-index: 200; }
+
+.card.common    { border-color: var(--common); }
+.card.rare      { border-color: var(--rare); }
+.card.exotic    { border-color: var(--exotic); }
+.card.legendary { border-color: var(--legendary); }
+
+.card.common:hover:not(.unplayable)    { box-shadow: var(--glow-c); }
+.card.rare:hover:not(.unplayable)      { box-shadow: var(--glow-r); }
+.card.exotic:hover:not(.unplayable)    { box-shadow: var(--glow-e); }
+.card.legendary:hover:not(.unplayable) { box-shadow: var(--glow-l); }
+
+.card.unplayable { opacity: 0.42; cursor: not-allowed; }
+
+/* holographic shimmer on rare+ */
+.card.rare::before, .card.exotic::before, .card.legendary::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.07) 50%, transparent 65%);
+  animation: card-shimmer 4s linear infinite;
+  pointer-events: none; z-index: 1;
+}
+@keyframes card-shimmer {
+  0%  { transform: translateX(-120%) rotate(10deg); }
+  100%{ transform: translateX(120%)  rotate(10deg); }
+}
+
+.card-cost {
+  position: absolute; top: 3px; left: 3px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--energy); color: #000;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Orbitron', monospace; font-weight: 900; font-size: 0.75rem;
+  z-index: 5;
+}
+.card-rarity-tag {
+  position: absolute; top: 3px; right: 3px;
+  font-size: 0.45rem; font-family: 'Share Tech Mono', monospace;
+  text-transform: uppercase; letter-spacing: 0.05em; z-index: 5;
+}
+.card.common    .card-rarity-tag { color: var(--common); }
+.card.rare      .card-rarity-tag { color: var(--rare); }
+.card.exotic    .card-rarity-tag { color: var(--exotic); }
+.card.legendary .card-rarity-tag { color: var(--legendary); }
+
+.card-art {
+  width: 100%; height: 68px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.2rem; margin-top: 22px;
+  overflow: hidden; flex-shrink: 0;
+}
+.card-art img { width:100%; height:100%; object-fit: cover; }
+
+.card-name {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.45rem; font-weight: 700;
+  text-align: center; padding: 2px 3px;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  line-height: 1.2; flex-shrink: 0;
+}
+.card-type-tag {
+  font-size: 0.5rem; text-align: center;
+  color: var(--dim); padding: 0 3px;
+  font-style: italic; flex-shrink: 0;
+}
+.card-desc {
+  font-size: clamp(0.48rem,0.9vw,0.58rem);
+  text-align: center; padding: 2px 4px 4px;
+  line-height: 1.3; flex: 1;
+  overflow: hidden;
+}
+
+/* ============================================================
+   COMBAT BOTTOM BAR
+   ============================================================ */
+.cbt-bottom {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.45rem 0.8rem;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0; gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Infusion slots */
+.infusion-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.infusion-lbl { font-family: 'Orbitron', monospace; font-size: 0.55rem; color: var(--dim); letter-spacing: 0.12em; }
+.inf-slot {
+  width: 32px; height: 32px;
+  border: 1px dashed rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.55rem; color: var(--dim);
+  transition: all 0.2s;
+}
+.inf-slot.filled {
+  border: 1px solid var(--accent); background: rgba(0,255,204,0.08);
+  color: var(--accent); font-size: 0.9rem;
+}
+
+/* ============================================================
+   GAME FOOTER
+   ============================================================ */
+.game-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.22rem 0.8rem;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.footer-brand { font-family: 'Orbitron', monospace; font-weight: 900; font-size: 0.8rem; color: var(--legendary); text-shadow: 0 0 8px var(--legendary); }
+.footer-tag   { font-size: 0.52rem; color: var(--dim); letter-spacing: 0.2em; text-transform: uppercase; }
+
+/* ============================================================
+   REWARD SCREEN
+   ============================================================ */
+#screen-reward {
+  background: radial-gradient(ellipse at 50% 50%, #1a1400 0%, #0a0a0f 70%);
+  justify-content: center; align-items: center; gap: 1.5rem;
+  text-align: center; padding: 2rem;
+}
+.reward-title { font-family: 'Orbitron', monospace; font-size: clamp(1.2rem,4vw,2rem); color: var(--energy); text-shadow: 0 0 20px var(--energy); z-index:1; }
+.reward-cards { display: flex; gap: 1.2rem; justify-content: center; flex-wrap: wrap; z-index:1; }
+.reward-card-wrap { cursor: pointer; transition: transform 0.18s; }
+.reward-card-wrap:hover { transform: scale(1.06) translateY(-6px); }
+
+/* ============================================================
+   GAME OVER / VICTORY
+   ============================================================ */
+#screen-gameover {
+  background: radial-gradient(ellipse at 50% 50%, #3a0010 0%, #0a0a0f 70%);
+  justify-content: center; align-items: center; gap: 1.8rem; text-align: center; padding: 2rem;
+}
+#screen-victory {
+  background: radial-gradient(ellipse at 50% 50%, #001030 0%, #0a0a0f 70%);
+  justify-content: center; align-items: center; gap: 1.8rem; text-align: center; padding: 2rem;
+}
+.end-title {
+  font-family: 'Orbitron', monospace; font-weight: 900;
+  font-size: clamp(2rem, 7vw, 4.5rem);
+}
+.end-title.defeat { color: var(--hp);       text-shadow: 0 0 30px var(--hp); }
+.end-title.victory{ color: var(--legendary); text-shadow: 0 0 30px var(--legendary); }
+.end-detail  { font-size: clamp(0.75rem,2vw,0.95rem); color: var(--dim); max-width: 400px; }
+.end-stats   { font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; color: var(--text); }
+.end-actions { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+
+/* ============================================================
+   FLOATING DAMAGE TEXT
+   ============================================================ */
+.float-dmg {
+  position: fixed;
+  font-family: 'Orbitron', monospace; font-weight: 900;
+  font-size: 1.4rem; pointer-events: none;
+  animation: float-up 0.9s ease forwards;
+  z-index: 3000;
+}
+@keyframes float-up { 0%{transform:translateY(0);opacity:1} 100%{transform:translateY(-55px);opacity:0} }
+
+/* ============================================================
+   PULSE EFFECTS
+   ============================================================ */
+.flash-red  { animation: flash-r 0.35s ease; }
+.flash-blue { animation: flash-b 0.35s ease; }
+@keyframes flash-r { 0%,100%{filter:none} 50%{filter:brightness(2) sepia(1) hue-rotate(-30deg)} }
+@keyframes flash-b { 0%,100%{filter:none} 50%{filter:brightness(2) sepia(1) hue-rotate(180deg)} }
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+/* ============================================================
+   RESPONSIVE — TABLET
+   ============================================================ */
+@media (max-width: 900px) {
+  .cbt-main { grid-template-columns: 160px 1fr 180px; }
+}
+
+@media (max-width: 768px) {
+  .cbt-main {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .cbt-sidebar-left  { display: none; }
+  .cbt-sidebar-right { display: none; }
+  .cbt-bottom { flex-wrap: wrap; }
+  .infusion-row { display: none; }
+  .portraits-row { gap: 0.5rem; }
+  .hand-area { justify-content: flex-start; }
+}
+
+@media (max-width: 480px) {
+  .cbt-topbar { padding: 0.3rem 0.5rem; }
+  .cbt-center-info { gap: 0.5rem; }
+  .portrait-frame { width: 68px !important; height: 68px !important; font-size: 1.8rem !important; }
+  .card { width: 80px; height: 118px; }
+  .card-art { height: 55px; font-size: 1.8rem; }
+  .btn-end-turn { padding: 0.7rem 1.2rem; font-size: 0.75rem; min-width: 100px; }
+}
+
+@media (max-width: 360px) {
+  .card { width: 72px; height: 108px; }
+  .card-art { height: 48px; font-size: 1.5rem; }
+}
+
+/* Landscape phone */
+@media (max-height: 500px) and (orientation: landscape) {
+  .portrait-frame { width: 60px !important; height: 60px !important; }
+  .hand-area { min-height: 120px; }
+  .card { width: 80px; height: 115px; }
+  .card-art { height: 50px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Scan line overlay -->
+<div class="scan-line"></div>
+
+<!-- ============================================================
+     SCREEN: MENU
+     ============================================================ -->
+<div id="screen-menu" class="screen active">
+  <div class="bg-grid"></div>
+  <div class="menu-logo">CONTAINMENT</div>
+  <div class="menu-tagline">TCG · FACEOFF · ROGUELIKE</div>
+  <div class="menu-buttons">
+    <button class="btn btn-accent" onclick="UI.startNewRun()">▶ NEW RUN</button>
+    <button id="btn-continue" class="btn btn-accent" style="display:none" onclick="UI.continueRun()">↺ CONTINUE RUN</button>
+    <button class="btn btn-legendary" onclick="UI.openDeckBuilder()">⚔ DECK BUILDER</button>
+  </div>
+  <div class="osp-brand">OSP</div>
+  <div class="menu-tagline" style="font-size:0.55rem">CONTAINMENT PROTOCOL ACTIVE · NFT INTEGRATION READY</div>
+</div>
+
+<!-- ============================================================
+     SCREEN: DECK BUILDER
+     ============================================================ -->
+<div id="screen-deckbuild" class="screen">
+  <div class="deckbuild-header">
+    <div class="deckbuild-title">⚔ DECK BUILDER</div>
+    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+      <span style="font-size:0.75rem;color:var(--dim)">DECK: <span id="db-count" style="color:var(--accent)">0</span> cards</span>
+      <button class="btn btn-accent"  style="padding:0.45rem 0.9rem;font-size:0.65rem" onclick="UI.saveDeck()">SAVE &amp; BACK</button>
+      <button class="btn btn-dim"     style="padding:0.45rem 0.9rem;font-size:0.65rem" onclick="UI.showScreen('screen-menu')">DISCARD</button>
+    </div>
+  </div>
+  <div id="all-cards-grid" class="all-cards-grid"></div>
+</div>
+
+<!-- ============================================================
+     SCREEN: MAP
+     ============================================================ -->
+<div id="screen-map" class="screen">
+  <div class="bg-grid"></div>
+  <div class="map-title">SELECT NODE</div>
+  <div class="map-subtitle" id="map-info">FLOOR 1 · DEPTH 0</div>
+  <div id="node-row" class="node-row"></div>
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;justify-content:center;z-index:1">
+    <button class="btn btn-dim" style="padding:0.5rem 1.2rem;font-size:0.65rem" onclick="UI.showScreen('screen-menu')">ABANDON RUN</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: COMBAT
+     ============================================================ -->
+<div id="screen-combat" class="screen">
+
+  <!-- Top bar -->
+  <div class="cbt-topbar">
+    <div class="cbt-osp">OSP</div>
+    <div class="cbt-center-info">
+      <div class="cbt-info-chip">FLOOR <span id="c-floor">1</span></div>
+      <div class="cbt-info-chip">TURN <span id="c-turn">1</span></div>
+      <div class="cbt-info-chip" id="c-nodetype">STANDARD</div>
+    </div>
+    <div class="energy-row">
+      <div class="energy-label">⚡</div>
+      <div class="energy-pips" id="ep-top"></div>
+      <div class="energy-text" id="et-top">3/3</div>
+    </div>
+  </div>
+
+  <!-- Main 3-col grid -->
+  <div class="cbt-main">
+
+    <!-- LEFT SIDEBAR -->
+    <div class="cbt-sidebar cbt-sidebar-left">
+      <div class="panel">
+        <div class="panel-title">⬡ RELICS</div>
+        <div class="relics-grid" id="relics-grid"></div>
+      </div>
+      <div class="panel" style="flex:1">
+        <div class="panel-title">◈ RUN STATS</div>
+        <div class="stat-row"><span class="stat-lbl">DEPTH</span>    <span class="stat-val" id="s-depth">0</span></div>
+        <div class="stat-row"><span class="stat-lbl">COURAGE</span>  <span class="stat-val" id="s-courage">0</span></div>
+        <div class="stat-row"><span class="stat-lbl">IR RATING</span><span class="stat-val" id="s-ir">0</span></div>
+        <div class="stat-row"><span class="stat-lbl">RUN TIME</span> <span class="stat-val" id="s-time">00:00</span></div>
+        <div class="stat-row"><span class="stat-lbl">DRAW PILE</span><span class="stat-val" id="s-draw">0</span></div>
+        <div class="stat-row"><span class="stat-lbl">DISCARD</span>  <span class="stat-val" id="s-disc">0</span></div>
+      </div>
+    </div>
+
+    <!-- CENTER -->
+    <div class="cbt-center">
+
+      <!-- Portraits -->
+      <div class="portraits-row">
+
+        <!-- PLAYER -->
+        <div class="portrait-wrap">
+          <div class="portrait-frame player-frame" id="p-portrait">🛡️</div>
+          <div class="portrait-name" style="color:var(--accent)">COMMANDER</div>
+          <div class="hp-wrap">
+            <div class="hp-label-row"><span>HP</span><span id="p-hp-txt">75/75</span></div>
+            <div class="bar-track"><div class="bar-fill hp-fill"     id="p-hp-bar"  style="width:100%"></div></div>
+            <div class="shield-track"><div class="bar-fill shield-fill" id="p-sh-bar" style="width:0%"></div></div>
+            <div class="status-row" id="p-status"></div>
+          </div>
+        </div>
+
+        <!-- VS CENTER -->
+        <div class="vs-center">
+          <div class="intent-box" id="intent-box">
+            <span class="intent-icon" id="intent-icon">⚔️</span>
+            <span id="intent-text">PREPARING...</span>
+          </div>
+          <div class="vs-label">VS</div>
+        </div>
+
+        <!-- ENEMY -->
+        <div class="portrait-wrap">
+          <div class="portrait-frame enemy-frame" id="e-portrait">👾</div>
+          <div class="portrait-name" style="color:var(--hp)" id="e-name">ENEMY</div>
+          <div class="hp-wrap">
+            <div class="hp-label-row"><span>HP</span><span id="e-hp-txt">80/80</span></div>
+            <div class="bar-track"><div class="bar-fill hp-fill"     id="e-hp-bar"  style="width:100%"></div></div>
+            <div class="shield-track"><div class="bar-fill shield-fill" id="e-sh-bar" style="width:0%"></div></div>
+            <div class="status-row" id="e-status"></div>
+          </div>
+        </div>
+
+      </div><!-- /portraits-row -->
+
+      <!-- Hand -->
+      <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+        <div class="hand-header">
+          <div class="hand-label">▸ HAND</div>
+          <div class="pile-counts">
+            <span>📦 <span id="draw-cnt">0</span></span>
+            <span>🗑️ <span id="disc-cnt">0</span></span>
+          </div>
+        </div>
+        <div class="hand-area" id="hand-area"></div>
+      </div>
+
+    </div><!-- /cbt-center -->
+
+    <!-- RIGHT SIDEBAR -->
+    <div class="cbt-sidebar cbt-sidebar-right">
+      <div class="panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+        <div class="panel-title">◉ ACTION REPORT</div>
+        <div class="action-report" id="action-report"></div>
+      </div>
+    </div>
+
+  </div><!-- /cbt-main -->
+
+  <!-- Bottom bar -->
+  <div class="cbt-bottom">
+    <div class="energy-row" style="flex:1">
+      <div class="energy-label">ENERGY</div>
+      <div class="energy-pips" id="ep-bot"></div>
+      <div class="energy-text" id="et-bot">3/3</div>
+    </div>
+    <div class="infusion-row">
+      <div class="infusion-lbl">INFUSION</div>
+      <div class="inf-slot" id="inf-0">+</div>
+      <div class="inf-slot" id="inf-1">+</div>
+      <div class="inf-slot" id="inf-2">+</div>
+    </div>
+    <button class="btn-end-turn" id="btn-end-turn" onclick="Game.endTurn()">END TURN</button>
+  </div>
+
+  <!-- Footer -->
+  <div class="game-footer">
+    <div class="footer-brand">OSP</div>
+    <div class="footer-tag">CONTAINMENT PROTOCOL · TCG FACEOFF</div>
+    <div class="footer-tag">NFT INTEGRATION READY</div>
+  </div>
+
+</div><!-- /screen-combat -->
+
+<!-- ============================================================
+     SCREEN: REWARD
+     ============================================================ -->
+<div id="screen-reward" class="screen">
+  <div class="bg-grid"></div>
+  <div class="reward-title">⚡ VICTORY!</div>
+  <div style="font-size:0.85rem;color:var(--dim);z-index:1">Choose a card to add to your deck:</div>
+  <div class="reward-cards" id="reward-cards"></div>
+  <button class="btn btn-dim" style="padding:0.6rem 1.5rem;z-index:1" onclick="Game.skipReward()">SKIP REWARD</button>
+</div>
+
+<!-- ============================================================
+     SCREEN: GAME OVER
+     ============================================================ -->
+<div id="screen-gameover" class="screen">
+  <div class="bg-grid"></div>
+  <div class="end-title defeat">DEFEATED</div>
+  <div class="end-detail" id="go-detail">You were overcome by the enemy.</div>
+  <div class="end-stats"  id="go-stats"></div>
+  <div class="end-actions">
+    <button class="btn btn-accent"   style="padding:0.7rem 1.8rem" onclick="UI.startNewRun()">TRY AGAIN</button>
+    <button class="btn btn-dim"      style="padding:0.7rem 1.8rem" onclick="UI.showScreen('screen-menu')">MAIN MENU</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: VICTORY
+     ============================================================ -->
+<div id="screen-victory" class="screen">
+  <div class="bg-grid"></div>
+  <div class="end-title victory">CONTAINED!</div>
+  <div class="end-detail">You have contained the threat. The protocol is complete.</div>
+  <div class="end-stats" id="v-stats"></div>
+  <div class="end-actions">
+    <button class="btn btn-legendary" style="padding:0.7rem 1.8rem" onclick="UI.startNewRun()">NEW RUN</button>
+    <button class="btn btn-dim"       style="padding:0.7rem 1.8rem" onclick="UI.showScreen('screen-menu')">MAIN MENU</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT GAME ENGINE
+     ============================================================ -->
+<script>
+'use strict';
+// ================================================================
+// DATA: CARD DATABASE  (14 cards)
+// ================================================================
+const CARD_DB = [
+  // ── COMMON ─────────────────────────────────────────────────────
+  {
+    id:'joybound', name:'JOYBOUND', sub:'Boss-Knocker', rarity:'common', cost:1, art:'😈',
+    desc:'Deal 6 dmg. Double vs Boss.',
+    play(){ const d = gs.enemy.isBoss?12:6; Combat.dmgEnemy(d); Log.add('player',`JOYBOUND: ${d} dmg!`); }
+  },
+  {
+    id:'crusader_slow', name:'CRUSADER', sub:'Slowing', rarity:'common', cost:2, art:'⚔️',
+    desc:'Deal 8 dmg. Apply Slow 1.',
+    play(){ Combat.dmgEnemy(8); Combat.applyStatus('enemy','slow',1); Log.add('player','CRUSADER: 8 dmg + Slow!'); }
+  },
+  {
+    id:'blazeborn_mg', name:'BLAZEBORN', sub:'Machine-Gunner', rarity:'common', cost:2, art:'🔥',
+    desc:'Deal 3 dmg × 3.',
+    play(){ let t=0; for(let i=0;i<3;i++) t+=Combat.dmgEnemy(3); Log.add('player',`BLAZEBORN MG: ${t} dmg!`); }
+  },
+  {
+    id:'angelic', name:'ANGELIC GUARDIAN', sub:'Shielding', rarity:'common', cost:1, art:'👼',
+    desc:'Gain 12 Shield.',
+    play(){ Combat.gainShield('player',12); Log.add('player','ANGELIC GUARDIAN: +12 Shield!'); }
+  },
+  // ── RARE ───────────────────────────────────────────────────────
+  {
+    id:'blazeborn_laser', name:'BLAZEBORN', sub:'Laser', rarity:'rare', cost:2, art:'⚡',
+    desc:'Deal 15 piercing dmg (ignores shield).',
+    play(){ Combat.dmgEnemy(15,true); Log.add('player','BLAZEBORN LASER: 15 piercing!'); }
+  },
+  {
+    id:'beelixea', name:'BEELIXEA', sub:'Machine-Gunner', rarity:'rare', cost:2, art:'🐝',
+    desc:'Deal 4 dmg × 4.',
+    play(){ let t=0; for(let i=0;i<4;i++) t+=Combat.dmgEnemy(4); Log.add('player',`BEELIXEA: ${t} dmg!`); }
+  },
+  {
+    id:'acolyte', name:'ACOLYTE', sub:'Rocket-Launcher', rarity:'rare', cost:3, art:'🚀',
+    desc:'Deal 22 dmg. Apply Burn 3.',
+    play(){ Combat.dmgEnemy(22); Combat.applyStatus('enemy','burn',3); Log.add('player','ACOLYTE: 22 dmg + Burn 3!'); }
+  },
+  // ── EXOTIC ─────────────────────────────────────────────────────
+  {
+    id:'panda', name:'PANDA', sub:'Boss-Knocker', rarity:'exotic', cost:2, art:'🐼',
+    desc:'Deal 14 dmg (+8 vs Boss).',
+    play(){ const d=gs.enemy.isBoss?22:14; Combat.dmgEnemy(d); Log.add('player',`PANDA: ${d} dmg!`); }
+  },
+  {
+    id:'discipline', name:'DISCIPLINE', sub:'Sniper', rarity:'exotic', cost:2, art:'🎯',
+    desc:'Deal 20 dmg.',
+    play(){ Combat.dmgEnemy(20); Log.add('player','DISCIPLINE: 20 dmg!'); }
+  },
+  {
+    id:'blazeborn_s5', name:'BLAZEBORN S5', sub:'Area Burst', rarity:'exotic', cost:3, art:'💥',
+    desc:'Deal 8 dmg × 2. Apply Weaken 2.',
+    play(){ let t=0; for(let i=0;i<2;i++) t+=Combat.dmgEnemy(8); Combat.applyStatus('enemy','weaken',2); Log.add('player',`BLAZEBORN S5: ${t} dmg + Weaken!`); }
+  },
+  // ── LEGENDARY ──────────────────────────────────────────────────
+  {
+    id:'crusader_mg', name:'CRUSADER', sub:'Machine-Gunner', rarity:'legendary', cost:3, art:'⚔️',
+    desc:'Deal 5 dmg × 6.',
+    play(){ let t=0; for(let i=0;i<6;i++) t+=Combat.dmgEnemy(5); Log.add('player',`CRUSADER MG: ${t} dmg!`); }
+  },
+  {
+    id:'core_b', name:'CORE-B', sub:'Virus', rarity:'legendary', cost:2, art:'☣️',
+    desc:'Apply Virus 4. Apply Weaken 2.',
+    play(){ Combat.applyStatus('enemy','virus',4); Combat.applyStatus('enemy','weaken',2); Log.add('player','CORE-B: Virus 4 + Weaken 2!'); }
+  },
+  {
+    id:'bunnies', name:'BUNNIES', sub:'Revealing', rarity:'legendary', cost:1, art:'🐰',
+    desc:'Draw 3 cards. Gain 5 Shield.',
+    play(){ Combat.draw(3); Combat.gainShield('player',5); Log.add('player','BUNNIES: Drew 3 + 5 Shield!'); }
+  },
+  {
+    id:'specter', name:'SPECTER', sub:'Doom', rarity:'legendary', cost:2, art:'👻',
+    desc:'Deal 12 dmg. Apply Doom 3.',
+    play(){ Combat.dmgEnemy(12); Combat.applyStatus('enemy','doom',3); Log.add('player','SPECTER: 12 dmg + Doom 3!'); }
+  }
+];
+
+// ================================================================
+// DATA: ENEMIES
+// ================================================================
+const ENEMIES = [
+  { id:'drone',    name:'DRONE',     art:'🤖', isBoss:false },
+  { id:'enforcer', name:'ENFORCER',  art:'🦾', isBoss:false },
+  { id:'stalker',  name:'STALKER',   art:'👁️', isBoss:false },
+  { id:'sentinel', name:'SENTINEL',  art:'🛡️', isBoss:false },
+  { id:'hivemind', name:'HIVEMIND',  art:'🧠', isBoss:true  },
+  { id:'colossus', name:'COLOSSUS',  art:'🏔️', isBoss:true  },
+  { id:'nexus',    name:'NEXUS CORE',art:'💀', isBoss:true  }
+];
+
+// ================================================================
+// DATA: RELICS
+// ================================================================
+const RELIC_DB = [
+  { id:'energy_core', name:'Energy Core',  art:'⚡', desc:'+1 max energy per combat.',       eff:'extra_energy' },
+  { id:'iron_wall',   name:'Iron Wall',    art:'🛡️', desc:'+5 shield at turn start.',         eff:'turn_shield'  },
+  { id:'virus_amp',   name:'Virus Amp',    art:'☣️', desc:'Virus deals 1 extra dmg/stack.',   eff:'virus_amp'    },
+  { id:'lucky_draw',  name:'Lucky Draw',   art:'🍀', desc:'Draw 1 extra card per turn.',      eff:'extra_draw'   },
+  { id:'blade',       name:'Steel Blade',  art:'⚔️', desc:'+2 damage on every attack.',       eff:'bonus_dmg'    },
+  { id:'void_orb',    name:'Void Orb',     art:'🔮', desc:'Survive 1 lethal hit at 1 HP.',    eff:'survive'      }
+];
+
+// ================================================================
+// GAME STATE
+// ================================================================
+let gs = {};
+
+function newGameState() {
+  return {
+    // Deck management
+    masterDeck : [],   // all cards the player owns
+    drawPile   : [],
+    discardPile: [],
+    hand       : [],
+
+    // Player
+    player: { hp:75, maxHp:75, shield:0, armor:0 },
+
+    // Enemy (populated at combat start)
+    enemy: { id:'', name:'', art:'', hp:0, maxHp:0, shield:0, armor:0, isBoss:false },
+
+    // Status effects
+    pStatus: {},
+    eStatus: {},
+
+    // Energy
+    energy: { cur:3, max:3 },
+
+    // Combat
+    turn       : 0,
+    playerTurn : false,
+    surviveUsed: false,
+
+    // Run meta
+    floor      : 0,
+    depth      : 0,
+    nodeIndex  : 0,
+    nodes      : [],
+    currentNode: null,
+    relics     : [],
+    courage    : 0,
+    irRating   : 0,
+    runStart   : Date.now(),
+
+    // Log
+    log: []
+  };
+}
+
+// ================================================================
+// UTILITY
+// ================================================================
+const Util = {
+  shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length-1; i > 0; i--) {
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  },
+  rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; },
+  clamp(v,lo,hi){ return Math.min(hi, Math.max(lo, v)); },
+  pct(val,max){ return max > 0 ? Util.clamp((val/max)*100, 0, 100) : 0; },
+  el(id){ return document.getElementById(id); },
+  setText(id, txt){ const e = Util.el(id); if(e) e.textContent = txt; },
+  setWidth(id, pct){ const e = Util.el(id); if(e) e.style.width = pct+'%'; },
+  fmtTime(ms){
+    const s = Math.floor(ms/1000);
+    return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+  }
+};
+
+// ================================================================
+// LOG
+// ================================================================
+const Log = {
+  add(type, text){
+    gs.log.push({ type, text });
+    if(gs.log.length > 120) gs.log.shift();
+    Render.actionReport();
+  }
+};
+
+// ================================================================
+// COMBAT MECHANICS
+// ================================================================
+const Combat = {
+
+  // Deal damage to enemy; returns actual damage dealt
+  dmgEnemy(amount, pierce=false){
+    let dmg = amount;
+    if(gs.relics.some(r=>r.eff==='bonus_dmg')) dmg += 2;
+    if(!pierce && gs.enemy.shield > 0){
+      const abs = Math.min(gs.enemy.shield, dmg);
+      gs.enemy.shield -= abs;
+      dmg -= abs;
+    }
+    gs.enemy.hp = Math.max(0, gs.enemy.hp - dmg);
+    if(dmg > 0) Render.floatText('e-portrait', `-${dmg}`, '#ff4466');
+    return dmg;
+  },
+
+  // Deal damage to player
+  dmgPlayer(amount){
+    let dmg = amount;
+    if(gs.player.armor > 0){
+      const abs = Math.min(gs.player.armor, dmg);
+      gs.player.armor -= abs; dmg -= abs;
+    }
+    if(gs.player.shield > 0){
+      const abs = Math.min(gs.player.shield, dmg);
+      gs.player.shield -= abs; dmg -= abs;
+    }
+    if(gs.pStatus.reflect && gs.pStatus.reflect > 0){
+      const ref = Math.floor(dmg*0.3);
+      gs.enemy.hp = Math.max(0, gs.enemy.hp - ref);
+      dmg = Math.max(0, dmg - ref);
+    }
+    // Survive relic
+    if(dmg >= gs.player.hp && gs.relics.some(r=>r.eff==='survive') && !gs.surviveUsed){
+      dmg = gs.player.hp - 1;
+      gs.surviveUsed = true;
+      Log.add('system','⚡ VOID ORB: Survived lethal!');
+    }
+    gs.player.hp = Math.max(0, gs.player.hp - dmg);
+    if(dmg > 0) Render.floatText('p-portrait', `-${dmg}`, '#ff4466');
+    return dmg;
+  },
+
+  gainShield(target, amount){
+    if(target==='player'){
+      gs.player.shield += amount;
+      Render.floatText('p-portrait', `+${amount}🛡`, '#44aaff');
+    } else {
+      gs.enemy.shield += amount;
+    }
+  },
+
+  applyStatus(target, eff, stacks){
+    const obj = target==='enemy' ? gs.eStatus : gs.pStatus;
+    obj[eff] = (obj[eff]||0) + stacks;
+  },
+
+  draw(n){
+    for(let i=0;i<n;i++){
+      if(gs.drawPile.length === 0){
+        if(gs.discardPile.length === 0) break;
+        gs.drawPile = Util.shuffle([...gs.discardPile]);
+        gs.discardPile = [];
+        Log.add('system','Shuffled discard into draw pile.');
+      }
+      if(gs.drawPile.length > 0) gs.hand.push(gs.drawPile.pop());
+    }
+    Render.hand();
+  },
+
+  // Resolve status effects at end of enemy's turn
+  resolveEnemyDot(){
+    const es = gs.eStatus;
+
+    if(es.virus && es.virus > 0){
+      const extra = gs.relics.some(r=>r.eff==='virus_amp') ? es.virus : 0;
+      const vd = es.virus + extra;
+      Combat.dmgEnemy(vd, true);
+      Log.add('status', `☣️ Virus: ${vd} dmg to ${gs.enemy.name}!`);
+    }
+    if(es.burn && es.burn > 0){
+      Combat.dmgEnemy(3, true);
+      es.burn--;
+      Log.add('status', `🔥 Burn: 3 dmg (${es.burn} left)!`);
+    }
+    if(es.doom && es.doom > 0){
+      es.doom--;
+      if(es.doom === 0){
+        gs.enemy.hp = 0;
+        Log.add('status', `💀 DOOM: ${gs.enemy.name} destroyed!`);
+      } else {
+        Log.add('status', `⏳ Doom: ${es.doom} turns remaining...`);
+      }
+    }
+    Render.all();
+  }
+};
+
+// ================================================================
+// ENEMY AI / INTENTS
+// ================================================================
+const EnemyAI = {
+
+  generateIntents(){
+    const ni = gs.nodeIndex;
+    const fl = gs.floor;
+    const n  = gs.currentNode;
+    const isBoss  = n && n.type==='boss';
+    const isElite = n && n.type==='elite';
+    const len = isBoss ? 7 : isElite ? 5 : 4;
+    const floorMult = Math.pow(1.15, fl);
+    const patterns = [];
+    for(let i=0;i<len;i++){
+      const r = Math.random();
+      if(r < 0.55){
+        const base = Math.round(10 * Math.pow(1.2, ni) * floorMult);
+        patterns.push({ type:'attack', val: base + Util.rand(0,3) });
+      } else if(r < 0.72){
+        patterns.push({ type:'shield', val: Math.round(8 * Math.pow(1.15, ni)) });
+      } else if(r < 0.88){
+        patterns.push({ type:'heavy',  val: Math.round(16 * Math.pow(1.2, ni) * floorMult) });
+      } else {
+        patterns.push({ type:'buff',   val: 2 });
+      }
+    }
+    // Bosses always end with a heavy
+    if(isBoss) patterns[len-1] = { type:'heavy', val: Math.round(20 * Math.pow(1.2, ni) * floorMult) };
+    gs.enemy.patterns = patterns;
+  },
+
+  currentIntent(){
+    if(!gs.enemy.patterns || gs.enemy.patterns.length === 0) return null;
+    const idx = (gs.turn - 1) % gs.enemy.patterns.length;
+    return gs.enemy.patterns[idx];
+  }
+};
+
+// ================================================================
+// GAME FLOW
+// ================================================================
+const Game = {
+
+  // ── Start a combat encounter ───────────────────────────────────
+  startCombat(node){
+    gs.currentNode = node;
+    gs.turn = 1;
+    gs.log = [];
+    gs.pStatus = {};
+    gs.eStatus = {};
+    gs.surviveUsed = false;
+    gs.player.shield = 0;
+
+    // Energy
+    const hasExtraEnergy = gs.relics.some(r=>r.eff==='extra_energy');
+    gs.energy.max = hasExtraEnergy ? 4 : 3;
+    gs.energy.cur = gs.energy.max;
+
+    // Build draw pile from master deck
+    gs.drawPile   = Util.shuffle(gs.masterDeck.map(c=>({...c})));
+    gs.discardPile = [];
+    gs.hand        = [];
+
+    // Pick enemy
+    const isBoss  = node.type==='boss';
+    const isElite = node.type==='elite';
+    const pool = isBoss ? ENEMIES.filter(e=>e.isBoss) : ENEMIES.filter(e=>!e.isBoss);
+    const eData = pool[Util.rand(0,pool.length-1)];
+    // HP formula: base * 1.4^nodeIndex * 1.25^floor
+    // Floor 0 boss (node 4): 80 * 1.4^4 ≈ 307 HP (matches problem's ~304 HP target)
+    // Floor 1 boss: ~384 HP, Floor 2 boss: ~480 HP (escalating challenge)
+    const baseHp = isBoss ? 80 : isElite ? 65 : 55;
+    const hp     = Math.round(baseHp * Math.pow(1.4, gs.nodeIndex) * Math.pow(1.25, gs.floor));
+    gs.enemy = { ...eData, hp, maxHp:hp, shield:0, armor:0, patterns:[] };
+    EnemyAI.generateIntents();
+
+    UI.showScreen('screen-combat');
+    Render.combatSetup();
+    Game.startPlayerTurn();
+  },
+
+  // ── Player turn start ──────────────────────────────────────────
+  startPlayerTurn(){
+    gs.playerTurn = true;
+
+    // Discard remaining hand (not first turn)
+    if(gs.turn > 1){
+      gs.discardPile.push(...gs.hand);
+      gs.hand = [];
+    }
+
+    gs.energy.cur = gs.energy.max;
+
+    // Turn-start relic effects
+    if(gs.relics.some(r=>r.eff==='turn_shield')){
+      Combat.gainShield('player', 5);
+    }
+
+    // Draw
+    const drawN = 5 + (gs.relics.some(r=>r.eff==='extra_draw') ? 1 : 0);
+    Combat.draw(drawN);
+
+    Log.add('system', `─── Turn ${gs.turn} ───`);
+    Render.all();
+    Util.el('btn-end-turn').disabled = false;
+  },
+
+  // ── Play a card from hand ──────────────────────────────────────
+  playCard(idx){
+    if(!gs.playerTurn) return;
+    const card = gs.hand[idx];
+    if(!card) return;
+    if(gs.energy.cur < card.cost){
+      Log.add('system', `Not enough energy for ${card.name}!`);
+      return;
+    }
+    gs.energy.cur -= card.cost;
+    gs.hand.splice(idx, 1);
+    card.play();
+    gs.discardPile.push({...card});
+
+    if(gs.enemy.hp <= 0){ Game.combatWin(); return; }
+    Render.all();
+  },
+
+  // ── End player turn ────────────────────────────────────────────
+  endTurn(){
+    if(!gs.playerTurn) return;
+    gs.playerTurn = false;
+    Util.el('btn-end-turn').disabled = true;
+    setTimeout(()=>{ Game.enemyTurn(); }, 350);
+  },
+
+  // ── Enemy turn ─────────────────────────────────────────────────
+  enemyTurn(){
+    const intent = EnemyAI.currentIntent();
+    if(!intent){ Game.afterEnemyTurn(); return; }
+
+    // Slow check
+    if(gs.eStatus.slow && gs.eStatus.slow > 0){
+      gs.eStatus.slow--;
+      Log.add('status', `⏰ ${gs.enemy.name} is SLOWED! Skips action.`);
+      setTimeout(()=>{ Combat.resolveEnemyDot(); Game.afterEnemyTurn(); }, 350);
+      return;
+    }
+
+    // Weaken multiplier
+    let mult = 1;
+    if(gs.eStatus.weaken && gs.eStatus.weaken > 0){
+      mult = 0.75;
+      gs.eStatus.weaken--;
+    }
+
+    switch(intent.type){
+      case 'attack': {
+        const d = Math.max(1, Math.round(intent.val * mult));
+        Combat.dmgPlayer(d);
+        Log.add('enemy', `⚔️ ${gs.enemy.name}: ${d} dmg!`);
+        break;
+      }
+      case 'heavy': {
+        const d = Math.max(1, Math.round(intent.val * mult));
+        Combat.dmgPlayer(d);
+        Log.add('enemy', `💥 ${gs.enemy.name} HEAVY ATK: ${d} dmg!`);
+        break;
+      }
+      case 'shield': {
+        Combat.gainShield('enemy', intent.val);
+        Log.add('enemy', `🛡️ ${gs.enemy.name}: Defended +${intent.val}!`);
+        break;
+      }
+      case 'buff': {
+        Combat.applyStatus('enemy','strength', intent.val);
+        Log.add('enemy', `💪 ${gs.enemy.name}: Buffed!`);
+        break;
+      }
+    }
+
+    Render.all();
+    setTimeout(()=>{ Combat.resolveEnemyDot(); Game.afterEnemyTurn(); }, 400);
+  },
+
+  afterEnemyTurn(){
+    if(gs.enemy.hp <= 0){ Game.combatWin(); return; }
+    if(gs.player.hp <= 0){ Game.combatLose(); return; }
+    gs.turn++;
+    Game.startPlayerTurn();
+  },
+
+  // ── Combat outcomes ────────────────────────────────────────────
+  combatWin(){
+    const pts = Math.floor(10 * Math.pow(1.3, gs.nodeIndex));
+    gs.courage   += pts;
+    gs.irRating   = Math.floor(gs.courage * 1.5);
+    gs.depth++;
+    Log.add('system', `🏆 VICTORY! +${pts} Courage.`);
+    Render.all();
+    setTimeout(()=>{ Game.showReward(); }, 700);
+  },
+
+  combatLose(){
+    Log.add('system','💀 DEFEATED!');
+    Render.all();
+    setTimeout(()=>{
+      Util.setText('go-detail', `Defeated by ${gs.enemy.name} on Floor ${gs.floor+1}, Node ${gs.nodeIndex+1}.`);
+      Util.setText('go-stats',  `Depth: ${gs.depth} | Courage: ${gs.courage} | IR: ${gs.irRating}`);
+      UI.showScreen('screen-gameover');
+      Save.clear();
+    }, 700);
+  },
+
+  // ── Rewards ────────────────────────────────────────────────────
+  showReward(){
+    if(gs.currentNode) gs.currentNode.done = true;
+
+    // Check for relic reward (every 3 nodes)
+    if(gs.depth % 3 === 0 && gs.relics.length < 6){
+      const owned = gs.relics.map(r=>r.id);
+      const avail = RELIC_DB.filter(r=>!owned.includes(r.id));
+      if(avail.length > 0){
+        const relic = avail[Util.rand(0, avail.length-1)];
+        gs.relics.push(relic);
+        Log.add('system', `⬡ Relic acquired: ${relic.name}!`);
+      }
+    }
+
+    // Check floor completion
+    const allDone = gs.nodes.every(n=>n.done);
+    if(allDone){
+      gs.floor++;
+      if(gs.floor >= 3){
+        const elapsed = Date.now() - gs.runStart;
+        Util.setText('v-stats', `Floors: ${gs.floor} | Depth: ${gs.depth} | Courage: ${gs.courage} | Time: ${Util.fmtTime(elapsed)}`);
+        UI.showScreen('screen-victory');
+        Save.clear();
+        return;
+      }
+      gs.nodes = Game.generateNodes();
+      gs.nodeIndex = 0;
+    }
+
+    // Pick reward cards
+    const rewards = Game.pickRewards();
+    const area = Util.el('reward-cards');
+    area.innerHTML = '';
+    rewards.forEach(card=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'reward-card-wrap';
+      wrap.appendChild(Render.buildCard(card, -1, true));
+      wrap.onclick = ()=>{
+        gs.masterDeck.push({...card});
+        Log.add('system', `Added ${card.name} to deck!`);
+        Game.goToMap();
+      };
+      area.appendChild(wrap);
+    });
+
+    UI.showScreen('screen-reward');
+  },
+
+  pickRewards(){
+    // Weight rarer cards to appear less frequently
+    const weights = { common:60, rare:30, exotic:8, legendary:2 };
+    const pool = CARD_DB.map(c=>({ c, w:weights[c.rarity]||10 }));
+    const total = pool.reduce((a,x)=>a+x.w, 0);
+    const picks = [];
+    const used  = new Set();
+    let attempts = 0;
+    while(picks.length < 3 && attempts < 100){
+      attempts++;
+      let r = Math.random()*total, cum=0;
+      for(const {c,w} of pool){
+        cum+=w;
+        if(r<cum && !used.has(c.id)){
+          picks.push(c);
+          used.add(c.id);
+          break;
+        }
+      }
+    }
+    return picks;
+  },
+
+  skipReward(){ Game.goToMap(); },
+
+  goToMap(){
+    Render.map();
+    UI.showScreen('screen-map');
+    Save.save();
+  },
+
+  // ── Node map generation ────────────────────────────────────────
+  generateNodes(){
+    // 5 nodes per floor: normal, normal, elite, normal, boss
+    // Boss at index 4 with 80 * 1.4^4 ≈ 307 HP (matches problem's ~304 HP target)
+    const types = ['normal','normal','elite','normal','boss'];
+    return types.map((type,i)=>({ idx:i, type, done:false }));
+  }
+};
+
+// ================================================================
+// RENDER
+// ================================================================
+const Render = {
+
+  all(){
+    Render.playerHp();
+    Render.enemyHp();
+    Render.energy();
+    Render.statuses();
+    Render.intent();
+    Render.pileCounts();
+    Render.hand();
+    Render.stats();
+    Render.relics();
+    Render.actionReport();
+    Render.infusion();
+  },
+
+  combatSetup(){
+    // Node type label
+    const n = gs.currentNode;
+    const el = Util.el('c-nodetype');
+    if(el && n){
+      const labels = { normal:'STANDARD', elite:'ELITE', boss:'BOSS' };
+      el.textContent = labels[n.type]||'STANDARD';
+      el.style.color = n.type==='boss'?'var(--legendary)':n.type==='elite'?'var(--exotic)':'var(--accent)';
+      el.className = 'cbt-info-chip '+(n.type==='boss'?'boss-chip':n.type==='elite'?'elite-chip':'');
+    }
+    // Enemy portrait & name
+    const ep = Util.el('e-portrait');
+    if(ep) ep.textContent = gs.enemy.art;
+    Util.setText('e-name', gs.enemy.name);
+    Render.all();
+  },
+
+  playerHp(){
+    const p = gs.player;
+    Util.setText('p-hp-txt', `${p.hp}/${p.maxHp}`);
+    Util.setWidth('p-hp-bar',  Util.pct(p.hp,     p.maxHp));
+    Util.setWidth('p-sh-bar',  Util.pct(p.shield,  p.maxHp));
+  },
+
+  enemyHp(){
+    const e = gs.enemy;
+    Util.setText('e-hp-txt', `${e.hp}/${e.maxHp}`);
+    Util.setWidth('e-hp-bar', Util.pct(e.hp,     e.maxHp));
+    Util.setWidth('e-sh-bar', Util.pct(e.shield,  e.maxHp));
+  },
+
+  energy(){
+    const cur = gs.energy.cur, max = gs.energy.max;
+    ['ep-top','ep-bot'].forEach(id=>{
+      const el = Util.el(id);
+      if(!el) return;
+      el.innerHTML='';
+      for(let i=0;i<max;i++){
+        const pip = document.createElement('div');
+        pip.className = 'ep'+(i<cur?' on':'');
+        el.appendChild(pip);
+      }
+    });
+    const txt = `${cur}/${max}`;
+    Util.setText('et-top', txt);
+    Util.setText('et-bot', txt);
+  },
+
+  statuses(){
+    Render.statusRow('p-status', gs.pStatus);
+    Render.statusRow('e-status', gs.eStatus);
+  },
+
+  statusRow(elId, obj){
+    const el = Util.el(elId);
+    if(!el) return;
+    el.innerHTML='';
+    const cfg = {
+      virus:   { col:'#00ff88', icon:'☣️' },
+      burn:    { col:'#ff6600', icon:'🔥' },
+      slow:    { col:'#aaaaff', icon:'⏰' },
+      weaken:  { col:'#ff8800', icon:'💀' },
+      doom:    { col:'#cc00ff', icon:'⏳' },
+      strength:{ col:'#ff4400', icon:'💪' },
+      reflect: { col:'#00ccff', icon:'🪞' }
+    };
+    Object.entries(obj).forEach(([k,v])=>{
+      if(v<=0) return;
+      const c = cfg[k]||{ col:'#fff', icon:'·' };
+      const b = document.createElement('div');
+      b.className='sbadge';
+      b.style.cssText=`background:${c.col}22;border-color:${c.col};color:${c.col}`;
+      b.textContent=`${c.icon}${v}`;
+      b.title=`${k}: ${v}`;
+      el.appendChild(b);
+    });
+  },
+
+  intent(){
+    const intent = EnemyAI.currentIntent();
+    if(!intent) return;
+    const map = {
+      attack:{ icon:'⚔️', fn:v=>`ATTACK ${v}` },
+      heavy: { icon:'💥', fn:v=>`HEAVY ${v}` },
+      shield:{ icon:'🛡️', fn:v=>`DEFEND ${v}` },
+      buff:  { icon:'💪', fn:()=>'BUFFING' }
+    };
+    const m = map[intent.type]||{icon:'?',fn:()=>'???'};
+    Util.setText('intent-icon', m.icon);
+    Util.setText('intent-text', m.fn(intent.val));
+  },
+
+  pileCounts(){
+    Util.setText('draw-cnt',  gs.drawPile.length);
+    Util.setText('disc-cnt',  gs.discardPile.length);
+    Util.setText('s-draw',    gs.drawPile.length);
+    Util.setText('s-disc',    gs.discardPile.length);
+    Util.setText('draw-cnt',  gs.drawPile.length);
+  },
+
+  hand(){
+    const area = Util.el('hand-area');
+    if(!area) return;
+    area.innerHTML='';
+    gs.hand.forEach((card,i)=>{
+      const el = Render.buildCard(card, i, false);
+      area.appendChild(el);
+    });
+  },
+
+  buildCard(card, idx, isReward){
+    const div = document.createElement('div');
+    div.className = `card ${card.rarity}`;
+    if(!isReward && gs.energy.cur < card.cost) div.classList.add('unplayable');
+
+    // Try NFT image first, fallback to emoji
+    const artHtml = `<img src="assets/cards/${card.id}.png"
+      onerror="this.replaceWith(document.createTextNode('${card.art}'))"
+      alt="${card.name}" style="width:100%;height:100%;object-fit:cover">`;
+
+    div.innerHTML = `
+      <div class="card-cost">${card.cost}</div>
+      <div class="card-rarity-tag">${card.rarity.substring(0,3).toUpperCase()}</div>
+      <div class="card-art">${artHtml}</div>
+      <div class="card-name">${card.name}</div>
+      <div class="card-type-tag">${card.sub}</div>
+      <div class="card-desc">${card.desc}</div>
+    `;
+
+    if(!isReward){
+      div.addEventListener('click',()=>{ if(!div.classList.contains('unplayable')) Game.playCard(idx); });
+    }
+    return div;
+  },
+
+  stats(){
+    const elapsed = Date.now() - gs.runStart;
+    Util.setText('c-floor',   gs.floor+1);
+    Util.setText('c-turn',    gs.turn);
+    Util.setText('s-depth',   gs.depth);
+    Util.setText('s-courage', gs.courage);
+    Util.setText('s-ir',      gs.irRating);
+    Util.setText('s-time',    Util.fmtTime(elapsed));
+  },
+
+  relics(){
+    const grid = Util.el('relics-grid');
+    if(!grid) return;
+    grid.innerHTML='';
+    for(let i=0;i<6;i++){
+      const slot = document.createElement('div');
+      const r = gs.relics[i];
+      if(r){
+        slot.className='relic-slot';
+        slot.textContent=r.art;
+        slot.title=`${r.name}: ${r.desc}`;
+      } else {
+        slot.className='relic-slot empty';
+        slot.textContent='·';
+      }
+      grid.appendChild(slot);
+    }
+  },
+
+  actionReport(){
+    const el = Util.el('action-report');
+    if(!el) return;
+    el.innerHTML='';
+    gs.log.slice(-30).forEach(entry=>{
+      const d = document.createElement('div');
+      d.className=`log-line ${entry.type}`;
+      d.textContent=entry.text;
+      el.appendChild(d);
+    });
+    el.scrollTop = el.scrollHeight;
+  },
+
+  infusion(){
+    for(let i=0;i<3;i++){
+      const el = Util.el(`inf-${i}`);
+      if(el){ el.className='inf-slot'; el.textContent='+'; }
+    }
+  },
+
+  floatText(targetId, text, color){
+    const target = Util.el(targetId);
+    if(!target) return;
+    const rect = target.getBoundingClientRect();
+    const f = document.createElement('div');
+    f.className='float-dmg';
+    f.textContent=text;
+    f.style.cssText=`color:${color};left:${rect.left+rect.width/2-20}px;top:${rect.top}px`;
+    document.body.appendChild(f);
+    setTimeout(()=>f.remove(), 950);
+  },
+
+  map(){
+    const infoEl = Util.el('map-info');
+    if(infoEl) infoEl.textContent = `FLOOR ${gs.floor+1}  ·  DEPTH ${gs.depth}`;
+    const row = Util.el('node-row');
+    if(!row) return;
+    row.innerHTML='';
+    gs.nodes.forEach((node,i)=>{
+      if(i>0){
+        const conn = document.createElement('div');
+        conn.className='node-connector';
+        row.appendChild(conn);
+      }
+      const el = document.createElement('div');
+      el.className=`node ${node.type}${node.done?' done':''}`;
+      if(!node.done && i===gs.nodeIndex) el.classList.add('current');
+      const typeIcon  = { normal:'⚔️', elite:'🔥', boss:'💀' };
+      const typeLabel = { normal:'FIGHT', elite:'ELITE', boss:'BOSS' };
+      const estHp = Math.round((node.type==='boss'?80:node.type==='elite'?65:55)*Math.pow(1.4,i)*Math.pow(1.25,gs.floor));
+      el.innerHTML=`<span class="node-icon">${typeIcon[node.type]}</span><span>${typeLabel[node.type]}</span><span style="font-size:0.45rem;color:var(--dim)">~${estHp}HP</span>`;
+      if(!node.done){
+        el.addEventListener('click',()=>{ gs.nodeIndex=i; Game.startCombat(node); Save.save(); });
+      }
+      row.appendChild(el);
+    });
+  },
+
+  deckBuilder(){
+    const grid = Util.el('all-cards-grid');
+    if(!grid) return;
+    grid.innerHTML='';
+    const deckIds = new Set(gs.masterDeck.map(c=>c.id));
+    CARD_DB.forEach(card=>{
+      const wrap = document.createElement('div');
+      wrap.style.cssText='position:relative;cursor:pointer';
+      const inDeck = deckIds.has(card.id);
+
+      const cardEl = Render.buildCard(card,-1,true);
+      // remove unplayable class if present
+      cardEl.classList.remove('unplayable');
+      wrap.appendChild(cardEl);
+
+      if(inDeck){
+        const badge = document.createElement('div');
+        badge.style.cssText=`position:absolute;inset:0;background:rgba(0,255,204,0.2);
+          border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;
+          font-family:'Orbitron',monospace;font-size:0.5rem;color:var(--accent);letter-spacing:0.1em`;
+        badge.textContent='✓ IN DECK';
+        wrap.appendChild(badge);
+      }
+
+      wrap.addEventListener('click',()=>{
+        if(inDeck){
+          const idx = gs.masterDeck.findIndex(c=>c.id===card.id);
+          if(idx!==-1) gs.masterDeck.splice(idx,1);
+        } else {
+          if(gs.masterDeck.length >= 20){ alert('Deck is full! (max 20 cards)'); return; }
+          gs.masterDeck.push({...card});
+        }
+        Util.setText('db-count', gs.masterDeck.length);
+        Render.deckBuilder();
+      });
+
+      grid.appendChild(wrap);
+    });
+    Util.setText('db-count', gs.masterDeck.length);
+  }
+};
+
+// ================================================================
+// SAVE / LOAD
+// ================================================================
+const Save = {
+  KEY: 'containment_run_v2',
+  DECK_KEY: 'containment_deck_v2',
+
+  save(){
+    const data = {
+      masterDeck : gs.masterDeck.map(c=>c.id),
+      player     : { ...gs.player },
+      floor      : gs.floor,
+      depth      : gs.depth,
+      nodeIndex  : gs.nodeIndex,
+      nodes      : gs.nodes,
+      relics     : gs.relics.map(r=>r.id),
+      courage    : gs.courage,
+      irRating   : gs.irRating,
+      runStart   : gs.runStart
+    };
+    try { localStorage.setItem(Save.KEY, JSON.stringify(data)); } catch(e){}
+  },
+
+  load(){
+    try {
+      const raw = localStorage.getItem(Save.KEY);
+      if(!raw) return false;
+      const d = JSON.parse(raw);
+      gs.masterDeck  = d.masterDeck.map(id=>({...CARD_DB.find(c=>c.id===id)})).filter(Boolean);
+      gs.player      = d.player;
+      gs.floor       = d.floor  || 0;
+      gs.depth       = d.depth  || 0;
+      gs.nodeIndex   = d.nodeIndex || 0;
+      gs.nodes       = d.nodes  || Game.generateNodes();
+      gs.relics      = (d.relics||[]).map(id=>RELIC_DB.find(r=>r.id===id)).filter(Boolean);
+      gs.courage     = d.courage  || 0;
+      gs.irRating    = d.irRating || 0;
+      gs.runStart    = d.runStart || Date.now();
+      return true;
+    } catch(e){ return false; }
+  },
+
+  clear(){ try{ localStorage.removeItem(Save.KEY); }catch(e){} },
+  hasSave(){ return !!localStorage.getItem(Save.KEY); },
+
+  saveDeck(ids){
+    try{ localStorage.setItem(Save.DECK_KEY, JSON.stringify(ids)); }catch(e){}
+  },
+  loadDeck(){
+    try{
+      const raw = localStorage.getItem(Save.DECK_KEY);
+      if(!raw) return null;
+      return JSON.parse(raw);
+    }catch(e){ return null; }
+  }
+};
+
+// ================================================================
+// UI CONTROLLER
+// ================================================================
+const UI = {
+
+  showScreen(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    const t = Util.el(id);
+    if(t) t.classList.add('active');
+    if(id==='screen-deckbuild') Render.deckBuilder();
+    if(id==='screen-map')       Render.map();
+  },
+
+  startNewRun(){
+    gs = newGameState();
+
+    // Load saved deck
+    const savedIds = Save.loadDeck();
+    if(savedIds && savedIds.length >= 5){
+      gs.masterDeck = savedIds.map(id=>({...CARD_DB.find(c=>c.id===id)})).filter(Boolean);
+    }
+    // Ensure minimum starter deck
+    if(gs.masterDeck.length < 5){
+      const starter = ['joybound','joybound','crusader_slow','blazeborn_mg','blazeborn_mg',
+                       'angelic','angelic','blazeborn_laser'];
+      gs.masterDeck = starter.map(id=>({...CARD_DB.find(c=>c.id===id)}));
+    }
+
+    gs.nodes    = Game.generateNodes();
+    gs.runStart = Date.now();
+    Game.goToMap();
+    Save.save();
+  },
+
+  continueRun(){
+    if(Save.load()){ Game.goToMap(); }
+    else { UI.startNewRun(); }
+  },
+
+  openDeckBuilder(){
+    // Load saved deck into gs.masterDeck for editing
+    const savedIds = Save.loadDeck();
+    if(savedIds){
+      gs.masterDeck = savedIds.map(id=>({...CARD_DB.find(c=>c.id===id)})).filter(Boolean);
+    }
+    UI.showScreen('screen-deckbuild');
+  },
+
+  saveDeck(){
+    if(gs.masterDeck.length < 5){
+      alert('You need at least 5 cards in your deck!');
+      return;
+    }
+    Save.saveDeck(gs.masterDeck.map(c=>c.id));
+    UI.showScreen('screen-menu');
+  }
+};
+
+// Make Game.endTurn / Game.skipReward accessible from HTML
+Game.endTurn   = Game.endTurn.bind(Game);
+Game.skipReward= Game.skipReward.bind(Game);
+
+// ================================================================
+// INIT
+// ================================================================
+function init(){
+  gs = newGameState();
+
+  // Show continue button if save exists
+  if(Save.hasSave()){
+    const btn = Util.el('btn-continue');
+    if(btn) btn.style.display='block';
+  }
+
+  UI.showScreen('screen-menu');
+
+  // Keep stat timer ticking
+  setInterval(()=>{
+    if(Util.el('screen-combat') && Util.el('screen-combat').classList.contains('active')){
+      Render.stats();
+    }
+  }, 1000);
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
