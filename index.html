@@ -1369,6 +1369,58 @@ body.enemy-turn .end-turn-btn { pointer-events: none; opacity: 0.4; }
     line-height: 65px;
 }
 
+/* ══════════════════════════════════════════
+   COMBO FLOATING TEXT
+══════════════════════════════════════════ */
+.combo-flash {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 26px;
+    font-weight: bold;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cyan);
+    text-shadow: var(--glow-cyan);
+    pointer-events: none;
+    z-index: 9999;
+    white-space: nowrap;
+    animation: comboFlashAnim 1.8s ease-out forwards;
+}
+.combo-flash.red    { color: var(--red);    text-shadow: var(--glow-red); }
+.combo-flash.green  { color: var(--green);  text-shadow: var(--glow-green); }
+.combo-flash.purple { color: var(--purple); text-shadow: var(--glow-purple); }
+.combo-flash.yellow { color: var(--yellow); text-shadow: 0 0 8px #ffcc00, 0 0 20px rgba(255,204,0,0.4); }
+@keyframes comboFlashAnim {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+    15%  { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    55%  { opacity: 1; transform: translate(-50%, -50%) scale(1.0); }
+    100% { opacity: 0; transform: translate(-50%, -60%) scale(1.02); }
+}
+
+/* ══════════════════════════════════════════
+   CORE COMBO PULSE
+══════════════════════════════════════════ */
+@keyframes corePulseCombo {
+    0%   { filter: brightness(1); }
+    20%  { filter: brightness(2.8) drop-shadow(0 0 18px var(--cyan)); }
+    50%  { filter: brightness(1.6); }
+    75%  { filter: brightness(2.2) drop-shadow(0 0 12px var(--cyan)); }
+    100% { filter: brightness(1); }
+}
+.core-hex.combo-pulse {
+    animation: corePulseCombo 0.9s ease-out;
+}
+
+/* ══════════════════════════════════════════
+   DAMAGE NUMBER — MISS/BLOCK
+══════════════════════════════════════════ */
+.damage-number.miss {
+    color: #888;
+    font-size: 14px;
+}
+
 </style>
 </head>
 <body>
@@ -1766,227 +1818,260 @@ body.enemy-turn .end-turn-btn { pointer-events: none; opacity: 0.4; }
 <script>
 /* ═══════════════════════════════════════════════════════════
    CONTAINMENT TCG — Game Logic
-   14 Cards · Energy System · Combat Resolution · Turn Manager
+   OSP Turret Cards · Combo System · Endless Mode
 ═══════════════════════════════════════════════════════════ */
 
 'use strict';
 
-/* ─── Card Database (14 cards) ─── */
+/* ─── Card Database (10 OSP Turret Cards) ─── */
 const CARD_DB = [
     {
-        id: 'neural-strike',
-        name: 'Neural Strike',
+        id: 'machine-gunner',
+        name: 'Machine Gunner',
         type: 'attack',
         rarity: 'common',
         cost: 1,
-        art: '⚡',
-        desc: 'Deal <b>8</b> damage. If enemy has Vulnerable, deal <b>10</b> instead.',
+        art: '🔫',
+        desc: 'HP finisher. Deals <b>10</b> HP DMG only if Shield & Armor = 0. Otherwise <b>BLOCKED</b>.<br><small>Combo: BREACH SEQUENCE (+10 bonus)</small>',
         effect(gs) {
-            const base = 8;
-            const bonus = gs.enemyStatus.find(s => s.id === 'vulnerable') ? 2 : 0;
-            const dmg = applyDamage(gs, 'enemy', base + bonus);
-            addLog(`Neural Strike → <b>${dmg}</b> DMG to Corruptor.`, 'player');
+            const hist = gs.cardsPlayedThisTurn;
+            const n = hist.length;
+            const prev1 = n >= 2 ? hist[n-2] : null;
+            const prev2 = n >= 3 ? hist[n-3] : null;
+            const breachSeq = (prev1 === 'Sniper' && prev2 === 'Laser');
+            const econBoost = hist.slice(0, n-1).includes('Economy Boost');
+
+            if (gs.enemy.shield > 0 || gs.enemy.armor > 0) {
+                addLog(`Machine Gunner — BLOCKED! Enemy has ${gs.enemy.shield > 0 ? 'Shield' : 'Armor'}.`, 'player');
+                showDamageNumber('BLOCKED', 'miss');
+            } else {
+                let dmg = breachSeq ? 20 : 10;
+                if (econBoost) dmg = Math.floor(dmg * 1.25);
+                gs.enemy.hp = Math.max(0, gs.enemy.hp - dmg);
+                updateEnemyStat('hp');
+                showDamageNumber(`-${dmg}`, 'enemy');
+                addLog(`Machine Gunner → <b>${dmg}</b> HP DMG${breachSeq ? ' [BREACH!]' : ''}!`, 'player');
+            }
             triggerCombatFlow('p-card');
         }
     },
     {
-        id: 'firewall',
-        name: 'Firewall',
+        id: 'laser',
+        name: 'Laser',
+        type: 'attack',
+        rarity: 'common',
+        cost: 1,
+        art: '🔵',
+        desc: 'Shield breaker. Deal <b>8</b> DMG, or <b>14</b> if enemy has Shield.<br><small>Combo: CORRUPTION BREACH (after Virus)</small>',
+        effect(gs) {
+            const hist = gs.cardsPlayedThisTurn;
+            const n = hist.length;
+            const prev1 = n >= 2 ? hist[n-2] : null;
+            const econBoost = hist.slice(0, n-1).includes('Economy Boost');
+            const corruptionBreach = (prev1 === 'Virus');
+            const hadShield = gs.enemy.shield > 0;
+
+            let base = hadShield ? 14 : 8;
+            if (corruptionBreach) {
+                base += 6; // extra Shield damage from Corruption Breach
+                applyStatus(gs, 'enemy', { id: 'virus', name: 'VIRUS', icon: '☣', color: 'purple', count: 1 });
+                addLog(`Laser [CORRUPTION BREACH] → +6 bonus + Virus×1 applied!`, 'player');
+            }
+            if (econBoost) base = Math.floor(base * 1.25);
+            const dmg = applyDamage(gs, 'enemy', base);
+            addLog(`Laser → <b>${dmg}</b> DMG${hadShield ? ' (Shield targeted)' : ''}.`, 'player');
+            triggerCombatFlow('p-card');
+        }
+    },
+    {
+        id: 'sniper',
+        name: 'Sniper',
+        type: 'attack',
+        rarity: 'rare',
+        cost: 2,
+        art: '🎯',
+        desc: 'Armor breaker. Shield present: <b>4</b> DMG. Armor only: <b>10</b> Armor+<b>3</b> HP pierce. Both 0: <b>18</b> CRIT.<br><small>Combo: PIERCING INFECTION (before Virus)</small>',
+        effect(gs) {
+            const hist = gs.cardsPlayedThisTurn;
+            const n = hist.length;
+            const econBoost = hist.slice(0, n-1).includes('Economy Boost');
+
+            if (gs.enemy.shield > 0) {
+                let dmg = econBoost ? Math.floor(4 * 1.25) : 4;
+                const absorbed = applyDamage(gs, 'enemy', dmg);
+                addLog(`Sniper — DEFLECTED by Shield! <b>${absorbed}</b> DMG only.`, 'player');
+            } else if (gs.enemy.armor > 0) {
+                let armorHit = econBoost ? Math.floor(10 * 1.25) : 10;
+                let pierce = econBoost ? Math.floor(3 * 1.25) : 3;
+                gs.enemy.armor = Math.max(0, gs.enemy.armor - armorHit);
+                updateEnemyStat('armor');
+                gs.enemy.hp = Math.max(0, gs.enemy.hp - pierce);
+                updateEnemyStat('hp');
+                const total = armorHit + pierce;
+                showDamageNumber(`-${total}`, 'enemy');
+                addLog(`Sniper → Armor crack <b>${armorHit}</b> + HP pierce <b>${pierce}</b>!`, 'player');
+            } else {
+                let crit = econBoost ? Math.floor(18 * 1.25) : 18;
+                gs.enemy.hp = Math.max(0, gs.enemy.hp - crit);
+                updateEnemyStat('hp');
+                showDamageNumber(`-${crit} CRIT`, 'enemy');
+                addLog(`Sniper → CRITICAL HIT <b>${crit}</b> HP DMG!`, 'player');
+            }
+            triggerCombatFlow('p-card');
+        }
+    },
+    {
+        id: 'rocket',
+        name: 'Rocket',
+        type: 'attack',
+        rarity: 'rare',
+        cost: 2,
+        art: '🚀',
+        desc: 'Mixed damage through layers: Shield → Armor → HP. Deals <b>18</b> total.<br><small>Combo: SIEGE COMBO (before Boss Knocker)</small>',
+        effect(gs) {
+            const hist = gs.cardsPlayedThisTurn;
+            const n = hist.length;
+            const econBoost = hist.slice(0, n-1).includes('Economy Boost');
+            let base = econBoost ? Math.floor(18 * 1.25) : 18;
+            const dmg = applyDamage(gs, 'enemy', base);
+            addLog(`Rocket → <b>${dmg}</b> DMG through layers (Shield→Armor→HP)!`, 'player');
+            triggerCombatFlow('p-card');
+        }
+    },
+    {
+        id: 'virus',
+        name: 'Virus',
+        type: 'skill',
+        rarity: 'common',
+        cost: 1,
+        art: '☣',
+        desc: 'Apply <b>Virus×2</b>. Ticks <b>3</b> HP/stack at end of turn, bypasses Shield/Armor.<br><small>Combo: PIERCING INFECTION (after Sniper = instant tick)</small>',
+        effect(gs) {
+            const hist = gs.cardsPlayedThisTurn;
+            const n = hist.length;
+            const prev1 = n >= 2 ? hist[n-2] : null;
+            const piercingInfect = (prev1 === 'Sniper');
+
+            applyStatus(gs, 'enemy', { id: 'virus', name: 'VIRUS', icon: '☣', color: 'purple', count: 2 });
+            addLog(`Virus → Applied <b>Virus×2</b> (DoT, bypasses defenses).`, 'player');
+            showDamageNumber('☣×2', 'purple', false);
+
+            if (piercingInfect) {
+                // Instant tick
+                const virusStack = gs.enemyStatus.find(s => s.id === 'virus');
+                const tickDmg = virusStack ? 3 * virusStack.count : 6;
+                gs.enemy.hp = Math.max(0, gs.enemy.hp - tickDmg);
+                updateEnemyStat('hp');
+                showDamageNumber(`-${tickDmg}☣`, 'enemy');
+                addLog(`Virus [PIERCING INFECTION] → instant tick <b>${tickDmg}</b> HP DMG!`, 'player');
+            }
+        }
+    },
+    {
+        id: 'shielding',
+        name: 'Shielding',
         type: 'skill',
         rarity: 'common',
         cost: 1,
         art: '🛡',
-        desc: 'Gain <b>8</b> Armor. Draw <b>1</b> card.',
+        desc: 'Gain <b>10</b> Shield. Gain <b>Shield Regen×1</b> (+3 Shield/turn).<br><small>Combo: SURVIVAL LOOP (before Healing)</small>',
         effect(gs) {
-            gs.player.armor += 8;
-            updatePlayerStat('armor');
-            addLog('Firewall → +8 Armor gained.', 'player');
-            drawCard(gs);
+            gs.player.shield += 10;
+            updatePlayerStat('shield');
+            applyStatus(gs, 'player', { id: 'shield-regen', name: 'S.REGEN', icon: '◈+', color: 'cyan', count: 1 });
+            addLog(`Shielding → +10 Shield + Shield Regen×1.`, 'player');
+            showDamageNumber('+10◈', 'shield', true);
         }
     },
     {
-        id: 'data-breach',
-        name: 'Data Breach',
-        type: 'attack',
-        rarity: 'rare',
-        cost: 2,
-        art: '💻',
-        desc: 'Deal <b>12</b> damage. Apply <b>Vulnerable</b> (2) to enemy.',
+        id: 'healing',
+        name: 'Healing',
+        type: 'skill',
+        rarity: 'common',
+        cost: 1,
+        art: '💚',
+        desc: 'Restore <b>10</b> HP. Gain <b>Regen×1</b> (+4 HP/turn).<br><small>Combo: SURVIVAL LOOP (after Shielding = extra Regen)</small>',
         effect(gs) {
-            const dmg = applyDamage(gs, 'enemy', 12);
-            applyStatus(gs, 'enemy', { id: 'vulnerable', name: 'VULNER', icon: '↓', color: 'red', count: 2 });
-            addLog(`Data Breach → <b>${dmg}</b> DMG + Vulnerable×2.`, 'player');
+            const hist = gs.cardsPlayedThisTurn;
+            const n = hist.length;
+            const prev1 = n >= 2 ? hist[n-2] : null;
+            const survivalLoop = (prev1 === 'Shielding');
+
+            gs.player.hp = Math.min(gs.player.maxHp, gs.player.hp + 10);
+            updatePlayerStat('hp');
+            const regenStacks = survivalLoop ? 2 : 1;
+            applyStatus(gs, 'player', { id: 'regen', name: 'REGEN', icon: '+', color: 'green', count: regenStacks });
+            if (survivalLoop) {
+                applyStatus(gs, 'player', { id: 'shield-regen', name: 'S.REGEN', icon: '◈+', color: 'cyan', count: 1 });
+            }
+            addLog(`Healing → +10 HP + Regen×${regenStacks}${survivalLoop ? ' + S.Regen×1 [SURVIVAL LOOP]' : ''}.`, 'player');
+            showDamageNumber('+10', 'heal', true);
         }
     },
     {
-        id: 'core-overload',
-        name: 'Core Overload',
+        id: 'revealing',
+        name: 'Revealing',
+        type: 'skill',
+        rarity: 'common',
+        cost: 1,
+        art: '🔍',
+        desc: 'Reveal enemy intent. Apply <b>Weakened×1</b> to enemy (enemy deals <b>−30%</b> damage next turn).',
+        effect(gs) {
+            applyStatus(gs, 'enemy', { id: 'weakened', name: 'WEAKENED', icon: '↓', color: 'red', count: 1 });
+            updateIntentDisplay(gs);
+            addLog(`Revealing → Enemy intent exposed. <b>Weakened×1</b> applied (−30% damage).`, 'player');
+            showDamageNumber('REVEAL', 'cyan', false);
+        }
+    },
+    {
+        id: 'boss-knocker',
+        name: 'Boss Knocker',
         type: 'attack',
         rarity: 'exotic',
         cost: 3,
         art: '💥',
-        desc: 'Deal <b>22</b> damage. Exhaust this card.',
+        desc: 'Deal <b>20</b> DMG. vs Boss (depth≥5): <b>35</b> DMG + Stun 1 turn.<br><small>Combo: SIEGE COMBO (after Rocket = +10 DMG + Stun)</small>',
         effect(gs) {
-            const dmg = applyDamage(gs, 'enemy', 22);
-            addLog(`Core Overload → <b>${dmg}</b> DMG! Card exhausted.`, 'player');
-        },
-        exhaust: true
-    },
-    {
-        id: 'system-patch',
-        name: 'System Patch',
-        type: 'skill',
-        rarity: 'common',
-        cost: 2,
-        art: '💊',
-        desc: 'Heal <b>12</b> HP. Gain <b>Regen</b> (2).',
-        effect(gs) {
-            gs.player.hp = Math.min(gs.player.maxHp, gs.player.hp + 12);
-            updatePlayerStat('hp');
-            applyStatus(gs, 'player', { id: 'regen', name: 'REGEN', icon: '+', color: 'green', count: 2 });
-            addLog(`System Patch → Healed <b>12</b> HP + Regen×2.`, 'player');
-            showDamageNumber('+12', 'heal', true);
-        }
-    },
-    {
-        id: 'cipher-blade',
-        name: 'Cipher Blade',
-        type: 'attack',
-        rarity: 'rare',
-        cost: 2,
-        art: '🗡',
-        desc: 'Deal <b>9</b> damage twice. Apply <b>Weak</b> (1) to enemy.',
-        effect(gs) {
-            const d1 = applyDamage(gs, 'enemy', 9);
-            const d2 = applyDamage(gs, 'enemy', 9);
-            applyStatus(gs, 'enemy', { id: 'weak', name: 'WEAK', icon: '—', color: 'red', count: 1 });
-            addLog(`Cipher Blade → <b>${d1}+${d2}</b> DMG + Weak×1.`, 'player');
-        }
-    },
-    {
-        id: 'emp-burst',
-        name: 'EMP Burst',
-        type: 'attack',
-        rarity: 'rare',
-        cost: 2,
-        art: '🌀',
-        desc: 'Deal <b>10</b> damage to all enemies. Reduce enemy Armor by <b>4</b>.',
-        effect(gs) {
-            gs.enemy.armor = Math.max(0, gs.enemy.armor - 4);
-            updateEnemyStat('armor');
-            const dmg = applyDamage(gs, 'enemy', 10);
-            addLog(`EMP Burst → <b>${dmg}</b> DMG + enemy Armor -4.`, 'player');
-        }
-    },
-    {
-        id: 'ghost-protocol',
-        name: 'Ghost Protocol',
-        type: 'skill',
-        rarity: 'rare',
-        cost: 1,
-        art: '👻',
-        desc: 'Gain <b>Evade</b> (1). Draw <b>2</b> cards.',
-        effect(gs) {
-            applyStatus(gs, 'player', { id: 'evade', name: 'EVADE', icon: '◇', color: 'cyan', count: 1 });
-            drawCard(gs);
-            drawCard(gs);
-            addLog('Ghost Protocol → Evade×1 + drew 2 cards.', 'player');
-        }
-    },
-    {
-        id: 'entropy-cascade',
-        name: 'Entropy Cascade',
-        type: 'attack',
-        rarity: 'exotic',
-        cost: 3,
-        art: '🌊',
-        desc: 'Deal <b>6</b> damage <b>4</b> times. Chain bonus applies to each hit.',
-        effect(gs) {
-            let total = 0;
-            for (let i = 0; i < 4; i++) total += applyDamage(gs, 'enemy', 6);
-            addLog(`Entropy Cascade → <b>4×6 = ${total}</b> DMG total.`, 'player');
-        }
-    },
-    {
-        id: 'quantum-shield',
-        name: 'Quantum Shield',
-        type: 'skill',
-        rarity: 'exotic',
-        cost: 2,
-        art: '🔮',
-        desc: 'Gain <b>16</b> Shield. Remove all negative status effects.',
-        effect(gs) {
-            gs.player.shield += 16;
-            updatePlayerStat('shield');
-            gs.playerStatus = gs.playerStatus.filter(s => !['weak', 'vulnerable', 'burn'].includes(s.id));
-            renderStatus();
-            addLog('Quantum Shield → +16 Shield + cleared debuffs.', 'player');
-            showDamageNumber('+16◈', 'shield', true);
-        }
-    },
-    {
-        id: 'void-strike',
-        name: 'Void Strike',
-        type: 'attack',
-        rarity: 'legendary',
-        cost: 3,
-        art: '⚫',
-        desc: '<b>Legendary.</b> Deal <b>30</b> damage. Ignores Armor and Shield.',
-        effect(gs) {
-            const dmg = 30;
-            gs.enemy.hp = Math.max(0, gs.enemy.hp - dmg);
-            updateEnemyStat('hp');
-            showDamageNumber(`-${dmg}`, 'enemy');
-            addLog(`Void Strike → <b>${dmg}</b> DMG (ignores defenses)!`, 'player');
-        }
-    },
-    {
-        id: 'neural-overwrite',
-        name: 'Neural Overwrite',
-        type: 'skill',
-        rarity: 'legendary',
-        cost: 3,
-        art: '🧠',
-        desc: '<b>Legendary.</b> Copy the top card of your discard pile into your hand. Draw <b>2</b> cards.',
-        effect(gs) {
-            if (gs.discard.length > 0) {
-                const top = { ...gs.discard[gs.discard.length - 1] };
-                gs.hand.push(top);
-                renderHand(gs);
+            const hist = gs.cardsPlayedThisTurn;
+            const n = hist.length;
+            const prev1 = n >= 2 ? hist[n-2] : null;
+            const siegeCombo = (prev1 === 'Rocket');
+            const econBoost = hist.slice(0, n-1).includes('Economy Boost');
+            const isBoss = (gs.depth || 0) >= 5;
+
+            let base = isBoss ? 35 : 20;
+            if (siegeCombo) base += 10;
+            if (econBoost) base = Math.floor(base * 1.25);
+
+            const dmg = applyDamage(gs, 'enemy', base);
+            let logMsg = `Boss Knocker → <b>${dmg}</b> DMG`;
+            if (isBoss) logMsg += ' (BOSS BONUS!)';
+            if (siegeCombo) logMsg += ' [SIEGE COMBO +10]';
+
+            if (isBoss || siegeCombo) {
+                gs.enemy.stunnedTurns = (gs.enemy.stunnedTurns || 0) + 1;
+                updateIntentDisplay(gs);
+                logMsg += ' — Enemy STUNNED 1 turn!';
             }
-            drawCard(gs);
-            drawCard(gs);
-            addLog('Neural Overwrite → Copied discard top + drew 2.', 'player');
+            addLog(logMsg + '.', 'player');
+            triggerCombatFlow('p-card');
         }
     },
     {
-        id: 'data-harvest',
-        name: 'Data Harvest',
+        id: 'economy-boost',
+        name: 'Economy Boost',
         type: 'economy',
         rarity: 'common',
-        cost: 1,
-        art: '📦',
-        desc: 'Draw <b>3</b> cards. Gain <b>1</b> extra energy this turn.',
+        cost: 0,
+        art: '⚡',
+        desc: 'Gain <b>+1 Valor</b> pip and <b>+1 Energy</b> this turn.<br><small>Combo: OVERCHARGED SHOT (next Attack +25% DMG)</small>',
         effect(gs) {
-            drawCard(gs); drawCard(gs); drawCard(gs);
-            // +1 bonus energy, capped at maxEnergy + 1 to allow one extra action
-            gs.energy = Math.min(gs.maxEnergy + 1, gs.energy + 1);
+            gs.energy = Math.min(gs.maxEnergy + 2, gs.energy + 1);
             updateEnergy(gs);
-            addLog('Data Harvest → Drew 3 cards + 1 bonus energy.', 'player');
-        }
-    },
-    {
-        id: 'exploit-vuln',
-        name: 'Exploit Vuln.',
-        type: 'attack',
-        rarity: 'exotic',
-        cost: 3,
-        art: '🎯',
-        desc: 'Deal <b>18</b> damage. If enemy is Vulnerable, deal <b>28</b> instead.',
-        effect(gs) {
-            const hasVuln = gs.enemyStatus.find(s => s.id === 'vulnerable');
-            const dmg = applyDamage(gs, 'enemy', hasVuln ? 28 : 18);
-            addLog(`Exploit Vuln. → <b>${dmg}</b> DMG${hasVuln ? ' (Vulnerable!)' : ''}.`, 'player');
+            // Valor pips visual
+            gs.valorPips = Math.min(5, gs.valorPips + 1);
+            updateValorPips(gs);
+            addLog(`Economy Boost → +1 Energy (now ${gs.energy}) + 1 Valor pip. Next Attack +25% DMG!`, 'player');
         }
     }
 ];
@@ -2002,7 +2087,7 @@ const GameState = {
     runStartTime: null,
     timerInterval: null,
     player: { hp: 75, maxHp: 75, armor: 0, shield: 0 },
-    enemy:  { hp: 80, maxHp: 80, armor: 0, shield: 0, intent: { type: 'attack', value: 12 } },
+    enemy:  { hp: 80, maxHp: 80, armor: 0, shield: 0, intent: { type: 'attack', value: 12 }, stunnedTurns: 0 },
     deck: [], hand: [], discard: [], exhaust: [],
     playerStatus: [], enemyStatus: [],
     chainBonus: 1,
@@ -2010,7 +2095,8 @@ const GameState = {
     activeFilter: 'all',
     combatLog: [],
     valorPips: 0,
-    turnEnded: false
+    turnEnded: false,
+    cardsPlayedThisTurn: []
 };
 
 /* ─── DOM References ─── */
@@ -2075,6 +2161,9 @@ const Game = {
         gs.energy -= card.cost;
         updateEnergy(gs);
 
+        // Track card in combo history (before effect so effect can read it)
+        gs.cardsPlayedThisTurn.push(card.name);
+
         // Play animation
         const cardEl = document.querySelector(`[data-card-id="${cardId}"]`);
         if (cardEl) cardEl.classList.add('playing');
@@ -2082,6 +2171,9 @@ const Game = {
         // Apply card effect
         setTimeout(() => {
             card.effect(gs);
+
+            // Check and show combo visual after effect
+            checkComboVisual(gs, card);
 
             // Move to discard (or exhaust)
             gs.hand.splice(cardIdx, 1);
@@ -2114,6 +2206,9 @@ const Game = {
 
         // Process end-of-turn status effects
         processEndOfTurnEffects(GameState);
+
+        // Reset combo history for next turn
+        GameState.cardsPlayedThisTurn = [];
 
         // Discard hand
         GameState.discard.push(...GameState.hand);
@@ -2193,13 +2288,36 @@ function drawCard(gs) {
 }
 
 function processEndOfTurnEffects(gs) {
-    // Regen
+    // Virus DoT (bypasses Shield/Armor - direct HP damage to enemy)
+    const virus = gs.enemyStatus.find(s => s.id === 'virus');
+    if (virus) {
+        const vDmg = 3 * virus.count;
+        gs.enemy.hp = Math.max(0, gs.enemy.hp - vDmg);
+        updateEnemyStat('hp');
+        showDamageNumber(`-${vDmg}☣`, 'enemy');
+        addLog(`Virus ticks — <b>${vDmg}</b> HP DMG (bypasses defenses).`, 'player');
+    }
+
+    // Regen (player)
     const regen = gs.playerStatus.find(s => s.id === 'regen');
     if (regen) {
-        gs.player.hp = Math.min(gs.player.maxHp, gs.player.hp + 4 * regen.count);
+        const healAmt = 4 * regen.count;
+        gs.player.hp = Math.min(gs.player.maxHp, gs.player.hp + healAmt);
         updatePlayerStat('hp');
-        addLog(`Regen healed <b>${4 * regen.count}</b> HP.`, 'player');
+        addLog(`Regen → healed <b>${healAmt}</b> HP.`, 'player');
+        showDamageNumber(`+${healAmt}`, 'heal', true);
     }
+
+    // Shield Regen (player)
+    const shieldRegen = gs.playerStatus.find(s => s.id === 'shield-regen');
+    if (shieldRegen) {
+        const sAmt = 3 * shieldRegen.count;
+        gs.player.shield += sAmt;
+        updatePlayerStat('shield');
+        addLog(`Shield Regen → +${sAmt} Shield.`, 'player');
+        showDamageNumber(`+${sAmt}◈`, 'shield', true);
+    }
+
     // Decrement status counts
     gs.playerStatus = gs.playerStatus
         .map(s => ({ ...s, count: s.count - 1 }))
@@ -2211,10 +2329,27 @@ function processEndOfTurnEffects(gs) {
 }
 
 function runEnemyTurn(gs) {
+    // Check stun
+    if (gs.enemy.stunnedTurns > 0) {
+        gs.enemy.stunnedTurns--;
+        addLog('Corruptor is STUNNED — skips attack!', 'system');
+        showDamageNumber('STUNNED', 'cyan');
+        updateIntentDisplay(gs);
+        setTimeout(() => startPlayerTurn(gs), 800);
+        return;
+    }
+
     const intent = gs.enemy.intent;
     if (intent.type === 'attack') {
         setTimeout(() => {
-            const dmg = applyDamage(gs, 'player', intent.value);
+            let baseDmg = intent.value;
+            // Weakened status reduces enemy damage by 30%
+            const weakened = gs.enemyStatus.find(s => s.id === 'weakened');
+            if (weakened) {
+                baseDmg = Math.floor(baseDmg * 0.7);
+                addLog(`Corruptor WEAKENED — attack reduced to <b>${baseDmg}</b>!`, 'system');
+            }
+            const dmg = applyDamage(gs, 'player', baseDmg);
             addLog(`Corruptor attacks for <b>${dmg}</b> DMG!`, 'enemy');
             if (!checkCombatEnd(gs)) setTimeout(() => startPlayerTurn(gs), 1000);
         }, 600);
@@ -2235,6 +2370,9 @@ function startPlayerTurn(gs) {
 
     // Quantum Cache relic: grants +1 bonus energy above maxEnergy
     gs.energy = gs.maxEnergy + 1;
+
+    // Reset combo history for new turn
+    gs.cardsPlayedThisTurn = [];
 
     updateEnergy(gs);
     DOM.turnNumber().textContent = gs.turn;
@@ -2398,9 +2536,17 @@ function updateIntentDisplay(gs) {
     const intent = gs.enemy.intent;
     const el = DOM.intentAction();
     if (!el) return;
-    if (intent.type === 'attack') el.textContent = `ATTACK ×${intent.value}`;
-    else if (intent.type === 'buff') el.textContent = `REINFORCE +${intent.value}`;
-    else el.textContent = intent.type.toUpperCase();
+    if ((gs.enemy.stunnedTurns || 0) > 0) {
+        el.textContent = 'STUNNED — skips';
+    } else if (intent.type === 'attack') {
+        const weakened = gs.enemyStatus && gs.enemyStatus.find(s => s.id === 'weakened');
+        const val = weakened ? Math.floor(intent.value * 0.7) : intent.value;
+        el.textContent = `ATTACK ×${val}${weakened ? ' (WEAKENED)' : ''}`;
+    } else if (intent.type === 'buff') {
+        el.textContent = `REINFORCE +${intent.value}`;
+    } else {
+        el.textContent = intent.type.toUpperCase();
+    }
 }
 
 function updateRewardBar(gs) {
@@ -2452,6 +2598,72 @@ function shakeElement(el) {
     el.style.transform = 'translateX(-6px)';
     setTimeout(() => { el.style.transform = 'translateX(6px)'; }, 80);
     setTimeout(() => { el.style.transform = ''; }, 160);
+}
+
+/* ─── Combo System ─── */
+function checkComboVisual(gs, card) {
+    const hist = gs.cardsPlayedThisTurn;
+    const n = hist.length;
+    const cur   = hist[n-1];
+    const prev1 = n >= 2 ? hist[n-2] : null;
+    const prev2 = n >= 3 ? hist[n-3] : null;
+
+    let combo = null;
+
+    // Breach Sequence: Laser → Sniper → Machine Gunner
+    if (cur === 'Machine Gunner' && prev1 === 'Sniper' && prev2 === 'Laser') {
+        combo = { name: 'BREACH SEQUENCE', color: 'red' };
+    }
+    // Corruption Breach: Virus → Laser
+    else if (cur === 'Laser' && prev1 === 'Virus') {
+        combo = { name: 'CORRUPTION BREACH', color: 'purple' };
+    }
+    // Piercing Infection: Sniper → Virus
+    else if (cur === 'Virus' && prev1 === 'Sniper') {
+        combo = { name: 'PIERCING INFECTION', color: 'purple' };
+    }
+    // Siege Combo: Rocket → Boss Knocker
+    else if (cur === 'Boss Knocker' && prev1 === 'Rocket') {
+        combo = { name: 'SIEGE COMBO', color: 'red' };
+    }
+    // Survival Loop: Shielding → Healing
+    else if (cur === 'Healing' && prev1 === 'Shielding') {
+        combo = { name: 'SURVIVAL LOOP', color: 'green' };
+    }
+    // Economy Setup: Economy Boost → any Attack card
+    else if (card.type === 'attack' && prev1 === 'Economy Boost') {
+        combo = { name: 'OVERCHARGED SHOT', color: 'yellow' };
+    }
+
+    if (combo) {
+        addLog(`⚡ COMBO: <b>${combo.name}</b>!`, 'system');
+        showComboText(combo.name, combo.color);
+        pulseCoreOnCombo();
+    }
+}
+
+function showComboText(comboName, colorClass) {
+    const el = document.createElement('div');
+    el.className = `combo-flash ${colorClass || ''}`;
+    el.textContent = '⚡ ' + comboName;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1900);
+}
+
+function pulseCoreOnCombo() {
+    const coreHex = document.querySelector('.player-core .core-hex');
+    if (!coreHex) return;
+    coreHex.classList.remove('combo-pulse');
+    void coreHex.offsetWidth; // force reflow to restart animation
+    coreHex.classList.add('combo-pulse');
+    setTimeout(() => coreHex.classList.remove('combo-pulse'), 950);
+}
+
+function updateValorPips(gs) {
+    const pips = document.querySelectorAll('.valor-pip');
+    pips.forEach((pip, i) => {
+        pip.classList.toggle('filled', i < (gs.valorPips || 0));
+    });
 }
 
 /* ─── Render Hand ─── */
@@ -2531,12 +2743,11 @@ function buildNodeMap() {
 
 /* ─── Initialize Deck ─── */
 function buildStartingDeck(gs) {
-    // Starting deck: all 14 cards, 2 copies of common/rare, 1 of exotic/legendary
+    // Starting deck: OSP turret cards, 2 copies of common/rare, 1 of exotic
     const counts = {
         common: 2,
-        rare: 2,
-        exotic: 1,
-        legendary: 1
+        rare:   2,
+        exotic: 1
     };
     const deck = [];
     CARD_DB.forEach(card => {
@@ -2634,6 +2845,7 @@ function startNewRun() {
     gs.activeFilter = 'all';
     gs.combatLog    = [];
     gs.valorPips    = 0;
+    gs.cardsPlayedThisTurn = [];
     gs.hand = []; gs.discard = []; gs.exhaust = [];
     gs.player = { hp: 75, maxHp: 75, armor: 0, shield: 0 };
     if (gs.timerInterval) clearInterval(gs.timerInterval);
@@ -2653,6 +2865,7 @@ function startCombat() {
         hp: maxHp, maxHp: maxHp,
         armor: Math.floor(d * 2),
         shield: 0,
+        stunnedTurns: 0,
         intent: randomEnemyIntent(d)
     };
     gs.phase = 'player';
@@ -2660,6 +2873,7 @@ function startCombat() {
     gs.turn = gs.turn || 1;
     gs.playerStatus = [];
     gs.enemyStatus  = [];
+    gs.cardsPlayedThisTurn = [];
     gs.hand = [];
     gs.discard.push(...gs.exhaust); gs.exhaust = [];
     // Reshuffle all cards back into deck for new fight
@@ -2677,6 +2891,7 @@ function startCombat() {
     updateIntentDisplay(gs);
     updateRewardBar(gs);
     updateRunStats();
+    gs.valorPips = 0; updateValorPips(gs);
     // Reset filter buttons
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     const allBtn = document.querySelector('.filter-btn.all');
